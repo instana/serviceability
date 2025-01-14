@@ -7,7 +7,7 @@
 # ./instana-k8s-mustgather.sh
 #
 ###############################################################################
-version=250114
+version=1.0.1
 current_time=$(date "+%Y.%m.%d-%H.%M.%S")
 
 export MGDIR=instana-mustgather-$current_time
