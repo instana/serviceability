@@ -7,12 +7,12 @@
 # ./instana-k8s-mustgather.sh
 #
 ###############################################################################
-version=1.0.1
-current_time=$(date "+%Y.%m.%d-%H.%M.%S")
+VERSION=1.0.1
+CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
 
-export MGDIR=instana-mustgather-$current_time
+export MGDIR=instana-mustgather-$CURRENT_TIME
 mkdir -p $MGDIR
-echo "$version" > $MGDIR/version.txt
+echo "$VERSION" > $MGDIR/version.txt
 
 if command -v oc > /dev/null
 then
