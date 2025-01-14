@@ -6,10 +6,15 @@
 #
 # ./instana-k8s-mustgather.sh
 #
+###############################################################################
+version=250114
 current_time=$(date "+%Y.%m.%d-%H.%M.%S")
+
 export MGDIR=instana-mustgather-$current_time
 mkdir -p $MGDIR
-if command -v oc > /dev/null 
+echo "$version" > $MGDIR/version.txt
+
+if command -v oc > /dev/null
 then
   CMD=oc
   LIST_NS="instana-agent openshift-controller-manager"
@@ -23,12 +28,15 @@ $CMD describe nodes > $MGDIR/node-describe.txt
 $CMD get namespaces > $MGDIR/namespaces.txt
 $CMD describe cm instana-agent -n instana-agent > $MGDIR/configMap.txt
 
-if [ $CMD == "oc" ] 
+if [ $CMD == "oc" ]
 then
   $CMD get clusteroperators > $MGDIR/cluster-operators.txt
 fi
 $CMD get pods -n instana-agent -o wide > $MGDIR/instana-agent-pod-list.txt
-if [ $CMD == "oc" ] 
+# copy logs from pod directly
+awk 'NR>1 && $1 !~ /k8sensor/ { system("'"$CMD"' -n '"instana-agent"' cp "$1":/opt/instana/agent/data/log/ '"$MGDIR"'/'"instana-agent"'/"$1"_logs") }' $MGDIR/instana-agent-pod-list.txt
+
+if [ $CMD == "oc" ]
 then
   $CMD get pods -n openshift-controller-manager -o wide > $MGDIR/openshift-controller-manager-pod-list.txt
 fi
