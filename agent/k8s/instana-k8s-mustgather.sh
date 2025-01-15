@@ -93,6 +93,8 @@ while read -r POD_NAME; do
             echo "Skipping k8sensor pod: ${POD_NAME}"
             continue
             ;;
+        *controller-manager*) continue ;;
+        *NAME*) continue ;;
     esac
 
     DEST_DIR="${MGDIR}/instana-agent/${POD_NAME}_logs"
