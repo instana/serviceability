@@ -98,7 +98,7 @@ while read -r POD_NAME; do
             continue
             ;;
         *NAME*)
-            echo "First line containing: ${POD_NAME}"
+            echo "Skipping line containing: ${POD_NAME}"
             continue
             ;;
     esac
