@@ -1,26 +1,29 @@
 #!/bin/sh
 ###############################################################################
 #
-# This script is used to collect data for
-# the Instana Host Agent on Kubernetes / OpenShift
+# This script collects data for the Instana Host Agent on Kubernetes / OpenShift
 #
 # Usage:
 #   ./instana-k8s-mustgather.sh
 #
 ###############################################################################
 
-# Safer scripting: stop on errors (-e), fail on unset vars (-u), fail on pipeline errors (pipefail).
-# Note: some older sh variants may not support pipefail; if that’s the case, remove `-o pipefail`.
+# Safer scripting: 
+# -e  : exit on any command failing
+# -u  : treat unset variables as errors
+# -o pipefail : fail if any command in a pipeline fails (may not be supported on all sh variants)
 set -euo pipefail
 
-VERSION="1.1.1"
+VERSION="250114"
 CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
 MGDIR="instana-mustgather-${CURRENT_TIME}"
 
 mkdir -p "${MGDIR}"
 echo "${VERSION}" > "${MGDIR}/version.txt"
 
+###############################################################################
 # Determine if we're on OpenShift (oc) or vanilla K8s (kubectl)
+###############################################################################
 if command -v oc >/dev/null 2>&1; then
     CMD="oc"
     LIST_NS="instana-agent openshift-controller-manager"
@@ -32,9 +35,18 @@ else
     exit 1
 fi
 
-# Ensure awk is available
+###############################################################################
+# Verify required utilities
+###############################################################################
+# Check for awk
 if ! command -v awk >/dev/null 2>&1; then
     echo "ERROR: 'awk' is not installed or not in PATH." >&2
+    exit 1
+fi
+
+# Check for jq (required to extract instana-agent-config)
+if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: 'jq' is not installed or not in PATH." >&2
     exit 1
 fi
 
@@ -43,7 +55,6 @@ fi
 ###############################################################################
 run_cmd() {
     echo "Running: $*"
-    # Execute the command with all arguments properly expanded
     "$@"
 }
 
@@ -57,20 +68,27 @@ run_cmd "${CMD}" describe nodes > "${MGDIR}/node-describe.txt"
 # Namespaces info
 run_cmd "${CMD}" get namespaces > "${MGDIR}/namespaces.txt"
 
-# If on OpenShift, gather clusteroperators
+# OpenShift cluster operators (if oc)
 if [ "${CMD}" = "oc" ]; then
     run_cmd "${CMD}" get clusteroperators > "${MGDIR}/cluster-operators.txt"
 fi
 
 ###############################################################################
-# Check if instana-agent config map exists and collect it
+# Gather instana-agent-config secret contents (new approach)
+#
+# If you’re on OpenShift, use 'oc' instead of 'kubectl'
+# This extracts 'configuration.yaml' from the base64-encoded secret
 ###############################################################################
-if "${CMD}" get cm instana-agent -n instana-agent >/dev/null 2>&1; then
-    run_cmd "${CMD}" describe cm instana-agent -n instana-agent \
-        > "${MGDIR}/configMap.txt"
+if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; then
+    echo "Collecting Instana Agent configuration from secret..."
+    "${CMD}" get secret instana-agent-config -n instana-agent -o json \
+      | jq -r '.data["configuration.yaml"]' \
+      | base64 -d \
+      > "${MGDIR}/configuration.yaml" \
+      || echo "WARN: Could not extract Instana Agent configuration."
 else
-    echo "No configMap named 'instana-agent' in 'instana-agent' namespace." \
-        >> "${MGDIR}/configMap.txt"
+    echo "No secret named 'instana-agent-config' in 'instana-agent' namespace." \
+        > "${MGDIR}/configuration.yaml"
 fi
 
 ###############################################################################
@@ -80,14 +98,13 @@ fi
 run_cmd "${CMD}" get pods -n instana-agent -o wide \
     > "${MGDIR}/instana-agent-pod-list.txt"
 
-# 2) Parse only the NAME column for actual script logic (skips header with NR>1)
-run_cmd "${CMD}" get pods -n instana-agent \
-    | awk 'NR>1 {print $1}' \
+# 2) Retrieve only the pod names using -o name, then strip the 'pod/' prefix
+run_cmd "${CMD}" get pods -n instana-agent -o name \
+    | sed 's#^pod/##' \
     > "${MGDIR}/instana-agent-pod-names.txt"
 
-# Copy logs from instana-agent pods (excluding pods containing "k8sensor")
+# Copy logs from instana-agent pods, excluding those with 'k8sensor' in their name
 while read -r POD_NAME; do
-    # Skip pods that match 'k8sensor'
     case "${POD_NAME}" in
         *k8sensor*)
             echo "Skipping k8sensor pod: ${POD_NAME}"
@@ -114,7 +131,7 @@ while read -r POD_NAME; do
 done < "${MGDIR}/instana-agent-pod-names.txt"
 
 ###############################################################################
-# If on OpenShift, gather pods in openshift-controller-manager namespace
+# If on OpenShift, gather pods in the openshift-controller-manager namespace
 ###############################################################################
 if [ "${CMD}" = "oc" ]; then
     run_cmd "${CMD}" get pods -n openshift-controller-manager -o wide \
@@ -134,14 +151,17 @@ gather_ns_data() {
         > "${ns_dir}/all-list.txt" 2>&1
 
     # Describe each pod in that namespace
-    run_cmd "${CMD}" get pods -n "${ns}" \
+    #   We parse only real pod names using -o name, then strip 'pod/'
+    run_cmd "${CMD}" get pods -n "${ns}" -o name \
+        | sed 's#^pod/##' \
         | awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
-        NR>1 {
-            pod=$1
-            print cmd " -n " ns " describe pod " pod " > " outdir "/" pod "-describe.txt && echo described " pod
-        }' | sh
+            {
+                pod=$1
+                print cmd " -n " ns " describe pod " pod " > " outdir "/" pod "-describe.txt && echo described " pod
+            }
+        ' | sh
 
-    # Build container list
+    # Build container list using go-template
     run_cmd "${CMD}" get pods -n "${ns}" \
         -o go-template='{{range $i := .items}}{{range $c := $i.spec.containers}}{{println $i.metadata.name $c.name}}{{end}}{{end}}' \
         > "${ns_dir}/container-list.txt"
@@ -156,7 +176,7 @@ gather_ns_data() {
         }
     ' "${ns_dir}/container-list.txt" | sh
 
-    # Gather previous logs for each container (may not exist if no restarts)
+    # Gather previous logs for each container (may not exist if container never restarted)
     awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
         {
             pod=$1
@@ -178,5 +198,4 @@ done
 # Create a compressed tarball of the must-gather directory
 ###############################################################################
 run_cmd tar czf "${MGDIR}.tgz" "${MGDIR}"
-
 echo "Must-gather completed. Archive created: ${MGDIR}.tgz"
