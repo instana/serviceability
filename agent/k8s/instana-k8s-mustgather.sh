@@ -8,13 +8,13 @@
 #
 ###############################################################################
 
-# Safer scripting: 
+# Safer scripting:
 # -e  : exit on any command failing
 # -u  : treat unset variables as errors
-# -o pipefail : fail if any command in a pipeline fails (may not be supported on all sh variants)
+# -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
 set -euo pipefail
 
-VERSION="250114"
+VERSION="1.1.2"
 CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
 MGDIR="instana-mustgather-${CURRENT_TIME}"
 
@@ -44,9 +44,9 @@ if ! command -v awk >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check for jq (required to extract instana-agent-config)
-if ! command -v jq >/dev/null 2>&1; then
-    echo "ERROR: 'jq' is not installed or not in PATH." >&2
+# Check for sed
+if ! command -v sed >/dev/null 2>&1; then
+    echo "ERROR: 'sed' is not installed or not in PATH." >&2
     exit 1
 fi
 
@@ -68,21 +68,19 @@ run_cmd "${CMD}" describe nodes > "${MGDIR}/node-describe.txt"
 # Namespaces info
 run_cmd "${CMD}" get namespaces > "${MGDIR}/namespaces.txt"
 
-# OpenShift cluster operators (if oc)
+# If on OpenShift, gather clusteroperators
 if [ "${CMD}" = "oc" ]; then
     run_cmd "${CMD}" get clusteroperators > "${MGDIR}/cluster-operators.txt"
 fi
 
 ###############################################################################
-# Gather instana-agent-config secret contents (new approach)
-#
-# If you’re on OpenShift, use 'oc' instead of 'kubectl'
-# This extracts 'configuration.yaml' from the base64-encoded secret
+# Gather instana-agent-config secret contents
+# We'll use jsonpath to extract .data["configuration.yaml"] and pipe to base64 -d
 ###############################################################################
+echo "Collecting Instana Agent configuration from secret (if present)..."
 if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; then
-    echo "Collecting Instana Agent configuration from secret..."
-    "${CMD}" get secret instana-agent-config -n instana-agent -o json \
-      | jq -r '.data["configuration.yaml"]' \
+    run_cmd "${CMD}" get secret instana-agent-config -n instana-agent \
+        -o "jsonpath={.data.configuration\.yaml}" \
       | base64 -d \
       > "${MGDIR}/configuration.yaml" \
       || echo "WARN: Could not extract Instana Agent configuration."
@@ -131,7 +129,7 @@ while read -r POD_NAME; do
 done < "${MGDIR}/instana-agent-pod-names.txt"
 
 ###############################################################################
-# If on OpenShift, gather pods in the openshift-controller-manager namespace
+# If on OpenShift, gather pods in openshift-controller-manager namespace
 ###############################################################################
 if [ "${CMD}" = "oc" ]; then
     run_cmd "${CMD}" get pods -n openshift-controller-manager -o wide \
@@ -150,8 +148,7 @@ gather_ns_data() {
     run_cmd "${CMD}" get all,events -n "${ns}" -o wide \
         > "${ns_dir}/all-list.txt" 2>&1
 
-    # Describe each pod in that namespace
-    #   We parse only real pod names using -o name, then strip 'pod/'
+    # Describe each pod in that namespace using -o name for real pod names
     run_cmd "${CMD}" get pods -n "${ns}" -o name \
         | sed 's#^pod/##' \
         | awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
@@ -172,17 +169,17 @@ gather_ns_data() {
             pod=$1
             container=$2
             log_file=outdir "/" pod "_" container ".log"
-            print cmd " -n " ns " logs " pod " -c " container " --tail=10000 > \"" log_file "\" && echo gathered logs of " pod "_" container
+            print cmd " -n " ns " logs " pod " -c " container " --tail=10000 > "\"" log_file "\"" " && echo gathered logs of " pod "_" container
         }
     ' "${ns_dir}/container-list.txt" | sh
 
-    # Gather previous logs for each container (may not exist if container never restarted)
+    # Gather previous logs for each container (may fail if no restarts)
     awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
         {
             pod=$1
             container=$2
             prev_log_file=outdir "/" pod "_" container "_previous.log"
-            print cmd " -n " ns " logs " pod " -c " container " --tail=10000 -p > \"" prev_log_file "\" && echo gathered previous logs of " pod "_" container
+            print cmd " -n " ns " logs " pod " -c " container " --tail=10000 -p > "\"" prev_log_file "\"" " && echo gathered previous logs of " pod "_" container
         }
     ' "${ns_dir}/container-list.txt" | sh || true
 }
