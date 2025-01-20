@@ -38,34 +38,29 @@ fi
 ###############################################################################
 # Verify required utilities
 ###############################################################################
-# Check for awk
 if ! command -v awk >/dev/null 2>&1; then
     echo "ERROR: 'awk' is not installed or not in PATH." >&2
     exit 1
 fi
 
-# Check for sed
 if ! command -v sed >/dev/null 2>&1; then
     echo "ERROR: 'sed' is not installed or not in PATH." >&2
     exit 1
 fi
 
 ###############################################################################
-# Helper function to run commands, echoing them first
+# Helper function to run commands, but log to stderr so it doesn't pollute stdout
 ###############################################################################
 run_cmd() {
-    echo "Running: $*"
-    "$@"
+    >&2 echo "Running: $*"   # Print debug info to stderr
+    "$@"                    # Run the command, leaving stdout clean for capturing
 }
 
 ###############################################################################
 # Collect cluster-level info
 ###############################################################################
-# Node info
 run_cmd "${CMD}" get nodes > "${MGDIR}/node-list.txt"
 run_cmd "${CMD}" describe nodes > "${MGDIR}/node-describe.txt"
-
-# Namespaces info
 run_cmd "${CMD}" get namespaces > "${MGDIR}/namespaces.txt"
 
 # If on OpenShift, gather clusteroperators
@@ -74,16 +69,18 @@ if [ "${CMD}" = "oc" ]; then
 fi
 
 ###############################################################################
-# Gather instana-agent-config secret contents
-# We'll use jsonpath to extract .data["configuration.yaml"] and pipe to base64 -d
+# Gather the instana-agent-config secret data (if it exists)
 ###############################################################################
-echo "Collecting Instana Agent configuration from secret (if present)..."
+echo "Collecting Instana Agent configuration from secret (if present)..." >&2
 if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; then
-    run_cmd "${CMD}" get secret instana-agent-config -n instana-agent \
-        -o "jsonpath={.data.configuration\.yaml}" \
-      | base64 -d \
-      > "${MGDIR}/configuration.yaml" \
-      || echo "WARN: Could not extract Instana Agent configuration."
+    # Use jsonpath to extract .data["configuration.yaml"], then base64 decode
+    if ! run_cmd "${CMD}" get secret instana-agent-config -n instana-agent \
+        -o jsonpath='{.data.configuration\.yaml}' \
+        | base64 -d \
+        > "${MGDIR}/configuration.yaml"
+    then
+        echo "WARN: Could not extract Instana Agent configuration (invalid base64 or missing field?)." >&2
+    fi
 else
     echo "No secret named 'instana-agent-config' in 'instana-agent' namespace." \
         > "${MGDIR}/configuration.yaml"
@@ -121,10 +118,14 @@ while read -r POD_NAME; do
     DEST_DIR="${MGDIR}/instana-agent/${POD_NAME}_logs"
     mkdir -p "$(dirname "${DEST_DIR}")"
 
-    echo "Copying logs from pod '${POD_NAME}'..."
-    run_cmd "${CMD}" -n instana-agent cp \
+    echo "Copying logs from pod '${POD_NAME}'..." >&2
+    # oc/kubectl cp <pod>:/path <localPath>
+    if ! run_cmd "${CMD}" -n instana-agent cp \
         "${POD_NAME}:/opt/instana/agent/data/log/" \
-        "${DEST_DIR}" || echo "WARN: Could not copy logs for pod ${POD_NAME}"
+        "${DEST_DIR}"
+    then
+        echo "WARN: Could not copy logs for pod '${POD_NAME}'" >&2
+    fi
 
 done < "${MGDIR}/instana-agent-pod-names.txt"
 
@@ -154,6 +155,7 @@ gather_ns_data() {
         | awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
             {
                 pod=$1
+                # "describe pod" command
                 print cmd " -n " ns " describe pod " pod " > " outdir "/" pod "-describe.txt && echo described " pod
             }
         ' | sh
@@ -165,22 +167,24 @@ gather_ns_data() {
 
     # Gather current logs for each container
     awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
-        {
-            pod=$1
-            container=$2
-            log_file=outdir "/" pod "_" container ".log"
-            print cmd " -n " ns " logs " pod " -c " container " --tail=10000 > "\"" log_file "\"" " && echo gathered logs of " pod "_" container
-        }
+    {
+        pod=$1
+        container=$2
+        log_file=outdir "/" pod "_" container ".log"
+        # Build the command to get logs and redirect
+        print cmd " -n " ns " logs " pod " -c " container " --tail=10000 > \"" log_file "\" && echo gathered logs of " pod "_" container
+    }
     ' "${ns_dir}/container-list.txt" | sh
 
     # Gather previous logs for each container (may fail if no restarts)
     awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
-        {
-            pod=$1
-            container=$2
-            prev_log_file=outdir "/" pod "_" container "_previous.log"
-            print cmd " -n " ns " logs " pod " -c " container " --tail=10000 -p > "\"" prev_log_file "\"" " && echo gathered previous logs of " pod "_" container
-        }
+    {
+        pod=$1
+        container=$2
+        prev_log_file=outdir "/" pod "_" container "_previous.log"
+        # Build the command to get previous logs
+        print cmd " -n " ns " logs " pod " -c " container " --tail=10000 -p > \"" prev_log_file "\" && echo gathered previous logs of " pod "_" container
+    }
     ' "${ns_dir}/container-list.txt" | sh || true
 }
 
@@ -195,4 +199,4 @@ done
 # Create a compressed tarball of the must-gather directory
 ###############################################################################
 run_cmd tar czf "${MGDIR}.tgz" "${MGDIR}"
-echo "Must-gather completed. Archive created: ${MGDIR}.tgz"
+>&2 echo "Must-gather completed. Archive created: ${MGDIR}.tgz"
