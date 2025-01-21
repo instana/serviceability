@@ -53,7 +53,7 @@ fi
 ###############################################################################
 run_cmd() {
     >&2 echo "Running: $*"   # Print debug info to stderr
-    "$@"                    # Run the command, leaving stdout clean for capturing
+    "$@"                     # Run the command, leaving stdout clean for capturing
 }
 
 ###############################################################################
@@ -71,7 +71,7 @@ fi
 ###############################################################################
 # Gather the instana-agent-config secret data (if it exists)
 ###############################################################################
-echo "Collecting Instana Agent configuration from secret (if present)..." >&2
+echo "Collecting Instana Agent configuration from secret..." >&2
 if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; then
     # Use jsonpath to extract .data["configuration.yaml"], then base64 decode
     if ! run_cmd "${CMD}" get secret instana-agent-config -n instana-agent \
@@ -79,11 +79,17 @@ if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; th
         | base64 -d \
         > "${MGDIR}/configuration.yaml"
     then
-        echo "WARN: Could not extract Instana Agent configuration (invalid base64 or missing field?)." >&2
+        echo "WARN: Could not extract Instana Agent configuration from secret." >&2
     fi
 else
-    echo "No secret named 'instana-agent-config' in 'instana-agent' namespace." \
-        > "${MGDIR}/configuration.yaml"
+    echo "(HELM 1.x) Collecting Instana Agent configuration from configMap..." >&2
+    if "${CMD}" get cm instana-agent -n instana-agent >/dev/null 2>&1; then
+        run_cmd "${CMD}" describe cm instana-agent -n instana-agent \
+            > "${MGDIR}/configMap.txt"
+    else
+        echo "WARN: No configMap named 'instana-agent' in 'instana-agent' namespace." \
+            >> "${MGDIR}/configMap.txt"
+    fi
 fi
 
 ###############################################################################
