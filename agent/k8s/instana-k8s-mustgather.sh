@@ -14,12 +14,13 @@
 # -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
 set -euo pipefail
 
-VERSION="1.1.3"
+VERSION="1.1.4"
 CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
-MGDIR="instana-mustgather-${CURRENT_TIME}"
+MGDIR="instana-k8s-mustgather-${CURRENT_TIME}"
 
 mkdir -p "${MGDIR}"
-echo "${VERSION}" > "${MGDIR}/version.txt"
+echo "Version: ${VERSION}" >&2
+echo "${VERSION}" > "${MGDIR}/instana-k8s-mustgather-version.txt"
 
 ###############################################################################
 # Determine if we're on OpenShift (oc) or vanilla K8s (kubectl)
