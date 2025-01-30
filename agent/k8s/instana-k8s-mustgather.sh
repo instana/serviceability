@@ -73,11 +73,10 @@ fi
 ###############################################################################
 echo "Collecting Instana Agent configuration from secret..." >&2
 if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; then
-    # Use jsonpath to extract .data["configuration.yaml"], then base64 decode
+    # Use jsonpath to extract .data
     if ! run_cmd "${CMD}" get secret instana-agent-config -n instana-agent \
-        -o jsonpath='{.data.configuration\.yaml}' \
-        | base64 -d \
-        > "${MGDIR}/configuration.yaml"
+        -o jsonpath='{.data}' \
+        > "${MGDIR}/instana-agent-config.json"
     then
         echo "WARN: Could not extract Instana Agent configuration from secret." >&2
     fi
