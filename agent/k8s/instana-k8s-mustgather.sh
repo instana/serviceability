@@ -182,14 +182,13 @@ gather_ns_data() {
     }
     ' "${ns_dir}/container-list.txt" | sh
 
-    # Gather previous logs for each container (may fail if no restarts)
+    # Gather previous logs for each container (friendly message if none exist)
     awk -v cmd="${CMD}" -v ns="${ns}" -v outdir="${ns_dir}" '
     {
         pod=$1
         container=$2
         prev_log_file=outdir "/" pod "_" container "_previous.log"
-        # Build the command to get previous logs
-        print cmd " -n " ns " logs " pod " -c " container " --tail=10000 -p > \"" prev_log_file "\" && echo gathered previous logs of " pod "_" container
+        print cmd " -n " ns " logs " pod " -c " container " --tail=10000 -p > \"" prev_log_file "\" 2>&1 && echo gathered previous logs of " pod "_" container " || echo No previous logs available for " pod "_" container
     }
     ' "${ns_dir}/container-list.txt" | sh || true
 }
