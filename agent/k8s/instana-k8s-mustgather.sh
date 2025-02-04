@@ -14,7 +14,7 @@
 # -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
 set -euo pipefail
 
-VERSION="1.1.4"
+VERSION="1.1.5"
 CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
 MGDIR="instana-k8s-mustgather-${CURRENT_TIME}"
 
