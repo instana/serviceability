@@ -1,7 +1,7 @@
-# z/OS Pre-requisite Check and Installation Utilities
+# z/OS Pre-requisite Check and Installation/debug Utilities
 
 
-## zOS-Agent-Prereq.sh Script
+## 1. zOS-Agent-Prereq.sh Script
 This script verifies the prerequisites for installing the Instana-Agent on a z/OS environment. If any prerequisites are missing, the script will assist in downloading them.
 
 ### Usage:
@@ -14,7 +14,7 @@ And transfer it to USS layer of z/OS.
 ![image1.png](image1.png)
 
 #### Script Execution :
-Execute the script from USS layer of z/OS with the user which has the root privilege.
+Execute the script from USS layer of z/OS with the user which has the root privilege and switching to bash shell.
 
 `chmod +x ./zOS-Agent-Prereq.sh && ./zOS-Agent-Prereq.sh`
 
@@ -26,21 +26,21 @@ Script will prompt user for the location of the latest meta-main.XXX.zos.pax.Z, 
 
 
 
-## WebSphere-zOS-Prereq.sh Script
+## 2. WebSphere-zOS-Prereq.sh Script (Debug Utility - Prereq. for WebSphere Monitoring)
 
 This script verifies the prerequisites for WebSphere tracing(i.e. WebSphere Attach Flag is enabled) using Instana-Agent it will share the output that which all the PID's will get traced.
 
 
 ### Usage:
 #### Script Execution :
-Execute the script from USS layer of z/OS with the user which has the root privilege.
+Execute the script from USS layer of z/OS with the user which has the root privilege and switching to bash shell.
 
 `chmod +x ./WebSphere-zOS-Prereq.sh && ./WebSphere-zOS-Prereq.sh`
 
 #### Output of Execution :
 ![image2.png](image2.png)
 
-## WebSphere-Pid-Trace-Enable.sh Script
+## 3. WebSphere-Pid-Trace-Enable.sh Script (Debug Utility - Prereq. for WebSphere Monitoring)
 
 This script checks the prerequisites for WebSphere tracing (i.e., whether the WebSphere Attach Flag is enabled) using the Instana-Agent. It prompts the user to input the PID and verifies if the flag is enabled for that PID.
 
@@ -48,9 +48,26 @@ This script checks the prerequisites for WebSphere tracing (i.e., whether the We
 ### Usage:
 #### Script Execution :
 
-Execute the script from USS layer of z/OS with the user which has the root privilege.
+Execute the script from USS layer of z/OS with the user which has the root privilege and switching to bash shell.
 
 `chmod +x ./WebSphere-Pid-Trace-Enable.sh && ./WebSphere-Pid-Trace-Enable.sh`
 
 #### Output of Execution :
 ![image3.png](image3.png)
+
+## 4. setup_agent_airgapped.sh Script (Installation Utility - for Instana Agent on z/OS - USS Airgapped env)
+
+This script checks the prerequisites for Instana Agent Installation on Air-Gapped env and Install the Instana-Agent, It prompts the user to input the FilePath for Instana-Agent.tar.gz.
+
+
+### Usage:
+#### Script Execution :
+
+Execute the script from USS layer of z/OS with the user which has the root privilege and switching to bash shell.
+
+`bash`
+
+`chmod +x ./setup_agent_airgapped.sh && ./setup_agent_airgapped.sh`
+
+#### Output of Execution :
+![image4.png](image4.png)

@@ -90,8 +90,6 @@ function check_user_privilege() {
   fi
 }
 
-
-
 function setup_agent_airgapped() {
 
     echo "Please enter the path to the Instana-agent .tar.gz file: e.g. /u/nghon/agent-assembly-linux-offline-s390x.tar.gz"
@@ -119,8 +117,6 @@ function setup_agent_airgapped() {
        echo "The file either doesn't exist or is not a .tar.gz file. Please check the file path and try again."
     fi
 
-
-
 }
 
 function check_existing_instana_agent() {
@@ -130,7 +126,6 @@ function check_existing_instana_agent() {
   if [ -d "${AGENT_DIR_ZOS}" ]; then
       echo "Instana agent path is available in the current directory."
       mkdir ${AGENT_DIR_ZOS_OLD}
-      echo ls
       cp "${AGENT_DIR_ZOS}/etc/mvn-settings.xml" "${AGENT_DIR_ZOS_OLD}"
       cp "${AGENT_DIR_ZOS}/etc/org.ops4j.pax.url.mvn.cfg" "${AGENT_DIR_ZOS_OLD}"
       cp "${AGENT_DIR_ZOS}/etc/instana/com.instana.agent.bootstrap.AgentBootstrap.cfg" "${AGENT_DIR_ZOS_OLD}"
