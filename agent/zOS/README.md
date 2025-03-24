@@ -10,6 +10,7 @@ This script verifies the prerequisites for installing the Instana-Agent on a z/O
 Script will prompt user for the location of the latest meta-main.XXX.zos.pax.Z, example meta-main.20250319_152437.zos.pax.Z file from the asset section ( Which can be downloaded from https://github.com/zopencommunity/metaport/releases ) as shown in the below scrrenshot.
 And transfer it to USS layer of z/OS.
 
+
 ![image1.png](image1.png)
 
 #### Script Execution :
@@ -21,9 +22,9 @@ Script will prompt user for the location of the latest meta-main.XXX.zos.pax.Z, 
 
 #### Output of Execution :
 
-`
 
-`
+
+
 
 ## WebSphere-zOS-Prereq.sh Script
 
@@ -37,6 +38,7 @@ Execute the script from USS layer of z/OS with the user which has the root privi
 `chmod +x ./WebSphere-zOS-Prereq.sh && ./WebSphere-zOS-Prereq.sh`
 
 #### Output of Execution :
+![image2.png](image2.png)
 
 ## WebSphere-Pid-Trace-Enable.sh Script
 
@@ -48,6 +50,7 @@ This script checks the prerequisites for WebSphere tracing (i.e., whether the We
 
 Execute the script from USS layer of z/OS with the user which has the root privilege.
 
-`chmod +x ./WebSphere-Pid-Trace-Enable.sh && ./WebSphere-Pid-Trace-Enable.sh.sh`
+`chmod +x ./WebSphere-Pid-Trace-Enable.sh && ./WebSphere-Pid-Trace-Enable.sh`
 
-
+#### Output of Execution :
+![image3.png](image3.png)

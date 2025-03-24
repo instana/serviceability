@@ -6,9 +6,9 @@ check_pid_folder() {
     directory="/tmp/.com_ibm_tools_attach/$pid"
 
     if [ -d "$directory" ]; then
-        echo "PID $pid: Folder exists, available to Trace"
+        echo "PID $pid: Flags are enabled, ready for Tracing."
     else
-        echo "PID $pid: Folder does NOT exist, NOT available to Trace."
+        echo "PID $pid: Flags are not enabled, NOT available to Trace."
     fi
 }
 
