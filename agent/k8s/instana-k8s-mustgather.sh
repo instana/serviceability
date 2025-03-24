@@ -22,6 +22,11 @@ MGDIR="instana-agent-k8s-mustgather-${VERSION}-${CURRENT_TIME}"
 mkdir -p "${MGDIR}"
 
 ###############################################################################
+# Configuration
+###############################################################################
+: "${INSTANA_AGENT_NAMESPACE:=instana-agent}"
+
+###############################################################################
 # Determine if we're on OpenShift (oc) or vanilla K8s (kubectl)
 ###############################################################################
 if command -v oc >/dev/null 2>&1; then
