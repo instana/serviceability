@@ -18,7 +18,7 @@ VERSION="1.1.6"
 echo "Version: ${VERSION}" >&2
 
 CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
-MGDIR="instana-k8s-mustgather-${VERSION}-${CURRENT_TIME}"
+MGDIR="instana-agent-k8s-mustgather-${VERSION}-${CURRENT_TIME}"
 mkdir -p "${MGDIR}"
 
 ###############################################################################
