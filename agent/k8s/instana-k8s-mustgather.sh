@@ -15,12 +15,11 @@
 set -euo pipefail
 
 VERSION="1.1.6"
-CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
-MGDIR="instana-k8s-mustgather-${CURRENT_TIME}"
-
-mkdir -p "${MGDIR}"
 echo "Version: ${VERSION}" >&2
-echo "${VERSION}" > "${MGDIR}/instana-k8s-mustgather-version.txt"
+
+CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
+MGDIR="instana-k8s-mustgather-${VERSION}-${CURRENT_TIME}"
+mkdir -p "${MGDIR}"
 
 ###############################################################################
 # Determine if we're on OpenShift (oc) or vanilla K8s (kubectl)
