@@ -14,23 +14,27 @@
 # -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
 set -euo pipefail
 
-VERSION="1.1.5"
-CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
-MGDIR="instana-k8s-mustgather-${CURRENT_TIME}"
-
-mkdir -p "${MGDIR}"
+VERSION="1.1.6"
 echo "Version: ${VERSION}" >&2
-echo "${VERSION}" > "${MGDIR}/instana-k8s-mustgather-version.txt"
+
+CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
+MGDIR="instana-agent-k8s-mustgather-${VERSION}-${CURRENT_TIME}"
+mkdir -p "${MGDIR}"
+
+###############################################################################
+# Configuration
+###############################################################################
+: "${INSTANA_AGENT_NAMESPACE:=instana-agent}"
 
 ###############################################################################
 # Determine if we're on OpenShift (oc) or vanilla K8s (kubectl)
 ###############################################################################
 if command -v oc >/dev/null 2>&1; then
     CMD="oc"
-    LIST_NS="instana-agent openshift-controller-manager"
+    LIST_NS="${INSTANA_AGENT_NAMESPACE} openshift-controller-manager"
 elif command -v kubectl >/dev/null 2>&1; then
     CMD="kubectl"
-    LIST_NS="instana-agent"
+    LIST_NS="${INSTANA_AGENT_NAMESPACE}"
 else
     echo "ERROR: Neither 'oc' nor 'kubectl' is installed or in PATH." >&2
     exit 1
@@ -73,9 +77,9 @@ fi
 # Gather the instana-agent-config secret data (if it exists)
 ###############################################################################
 echo "Collecting Instana Agent configuration from secret..." >&2
-if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; then
+if "${CMD}" get secret instana-agent-config -n "${INSTANA_AGENT_NAMESPACE}" >/dev/null 2>&1; then
     # Use jsonpath to extract .data
-    if ! run_cmd "${CMD}" get secret instana-agent-config -n instana-agent \
+    if ! run_cmd "${CMD}" get secret instana-agent-config -n "${INSTANA_AGENT_NAMESPACE}" \
         -o jsonpath='{.data}' \
         > "${MGDIR}/instana-agent-config.json"
     then
@@ -83,8 +87,8 @@ if "${CMD}" get secret instana-agent-config -n instana-agent >/dev/null 2>&1; th
     fi
 else
     echo "(HELM 1.x) Collecting Instana Agent configuration from configMap..." >&2
-    if "${CMD}" get cm instana-agent -n instana-agent >/dev/null 2>&1; then
-        run_cmd "${CMD}" describe cm instana-agent -n instana-agent \
+    if "${CMD}" get cm instana-agent -n "${INSTANA_AGENT_NAMESPACE}" >/dev/null 2>&1; then
+        run_cmd "${CMD}" describe cm instana-agent -n "${INSTANA_AGENT_NAMESPACE}" \
             > "${MGDIR}/configMap.txt"
     else
         echo "WARN: No configMap named 'instana-agent' in 'instana-agent' namespace." \
@@ -96,11 +100,11 @@ fi
 # Collect pod info for the instana-agent namespace
 ###############################################################################
 # 1) Wide output for reference
-run_cmd "${CMD}" get pods -n instana-agent -o wide \
+run_cmd "${CMD}" get pods -n "${INSTANA_AGENT_NAMESPACE}" -o wide \
     > "${MGDIR}/instana-agent-pod-list.txt"
 
 # 2) Retrieve only the pod names using -o name, then strip the 'pod/' prefix
-run_cmd "${CMD}" get pods -n instana-agent -o name \
+run_cmd "${CMD}" get pods -n "${INSTANA_AGENT_NAMESPACE}" -o name \
     | sed 's#^pod/##' \
     > "${MGDIR}/instana-agent-pod-names.txt"
 
@@ -126,7 +130,7 @@ while read -r POD_NAME; do
 
     echo "Copying logs from pod '${POD_NAME}'..." >&2
     # oc/kubectl cp <pod>:/path <localPath>
-    if ! run_cmd "${CMD}" -n instana-agent cp \
+    if ! run_cmd "${CMD}" -n "${INSTANA_AGENT_NAMESPACE}" cp \
         "${POD_NAME}:/opt/instana/agent/data/log/" \
         "${DEST_DIR}"
     then
