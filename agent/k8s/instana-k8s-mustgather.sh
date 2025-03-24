@@ -31,10 +31,10 @@ mkdir -p "${MGDIR}"
 ###############################################################################
 if command -v oc >/dev/null 2>&1; then
     CMD="oc"
-    LIST_NS="instana-agent openshift-controller-manager"
+    LIST_NS="${INSTANA_AGENT_NAMESPACE} openshift-controller-manager"
 elif command -v kubectl >/dev/null 2>&1; then
     CMD="kubectl"
-    LIST_NS="instana-agent"
+    LIST_NS="${INSTANA_AGENT_NAMESPACE}"
 else
     echo "ERROR: Neither 'oc' nor 'kubectl' is installed or in PATH." >&2
     exit 1
