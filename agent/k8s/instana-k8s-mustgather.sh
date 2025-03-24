@@ -77,9 +77,9 @@ fi
 # Gather the instana-agent-config secret data (if it exists)
 ###############################################################################
 echo "Collecting Instana Agent configuration from secret..." >&2
-if "${CMD}" get secret instana-agent-config -n ${INSTANA_AGENT_NAMESPACE} >/dev/null 2>&1; then
+if "${CMD}" get secret instana-agent-config -n "${INSTANA_AGENT_NAMESPACE}" >/dev/null 2>&1; then
     # Use jsonpath to extract .data
-    if ! run_cmd "${CMD}" get secret instana-agent-config -n ${INSTANA_AGENT_NAMESPACE} \
+    if ! run_cmd "${CMD}" get secret instana-agent-config -n "${INSTANA_AGENT_NAMESPACE}" \
         -o jsonpath='{.data}' \
         > "${MGDIR}/instana-agent-config.json"
     then
@@ -87,8 +87,8 @@ if "${CMD}" get secret instana-agent-config -n ${INSTANA_AGENT_NAMESPACE} >/dev/
     fi
 else
     echo "(HELM 1.x) Collecting Instana Agent configuration from configMap..." >&2
-    if "${CMD}" get cm instana-agent -n ${INSTANA_AGENT_NAMESPACE} >/dev/null 2>&1; then
-        run_cmd "${CMD}" describe cm instana-agent -n ${INSTANA_AGENT_NAMESPACE} \
+    if "${CMD}" get cm instana-agent -n "${INSTANA_AGENT_NAMESPACE}" >/dev/null 2>&1; then
+        run_cmd "${CMD}" describe cm instana-agent -n "${INSTANA_AGENT_NAMESPACE}" \
             > "${MGDIR}/configMap.txt"
     else
         echo "WARN: No configMap named 'instana-agent' in 'instana-agent' namespace." \
@@ -100,11 +100,11 @@ fi
 # Collect pod info for the instana-agent namespace
 ###############################################################################
 # 1) Wide output for reference
-run_cmd "${CMD}" get pods -n ${INSTANA_AGENT_NAMESPACE} -o wide \
+run_cmd "${CMD}" get pods -n "${INSTANA_AGENT_NAMESPACE}" -o wide \
     > "${MGDIR}/instana-agent-pod-list.txt"
 
 # 2) Retrieve only the pod names using -o name, then strip the 'pod/' prefix
-run_cmd "${CMD}" get pods -n ${INSTANA_AGENT_NAMESPACE} -o name \
+run_cmd "${CMD}" get pods -n "${INSTANA_AGENT_NAMESPACE}" -o name \
     | sed 's#^pod/##' \
     > "${MGDIR}/instana-agent-pod-names.txt"
 
@@ -130,7 +130,7 @@ while read -r POD_NAME; do
 
     echo "Copying logs from pod '${POD_NAME}'..." >&2
     # oc/kubectl cp <pod>:/path <localPath>
-    if ! run_cmd "${CMD}" -n ${INSTANA_AGENT_NAMESPACE} cp \
+    if ! run_cmd "${CMD}" -n "${INSTANA_AGENT_NAMESPACE}" cp \
         "${POD_NAME}:/opt/instana/agent/data/log/" \
         "${DEST_DIR}"
     then
