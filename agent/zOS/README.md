@@ -16,7 +16,11 @@ And transfer it to USS layer of z/OS.
 #### Script Execution :
 Execute the script from USS layer of z/OS with the user which has the root privilege and switching to bash shell.
 
-`chmod +x ./zOS-Agent-Prereq.sh && ./zOS-Agent-Prereq.sh`
+`bash`
+
+`chmod +x ./zOS-Agent-Prereq.sh && chtag -R -tc 819 ./zOS-Agent-Prereq.sh && ./zOS-Agent-Prereq.sh`
+
+**NOTE: Instead of transferring above script(via scp/sftp) if you are directly copy pasting on z/OS - USS layer then while executing script remove chtag -R -tc 819 ./zOS-Agent-Prereq.sh from above command.**
 
 Script will prompt user for the location of the latest meta-main.XXX.zos.pax.Z, provide the path of above downloaded meta-main.XXX.zos.pax.Z file on the USS layer.
 
@@ -35,7 +39,11 @@ This script verifies the prerequisites for WebSphere tracing(i.e. WebSphere Atta
 #### Script Execution :
 Execute the script from USS layer of z/OS with the user which has the root privilege and switching to bash shell.
 
-`chmod +x ./WebSphere-zOS-Prereq.sh && ./WebSphere-zOS-Prereq.sh`
+`bash`
+
+`chmod +x ./WebSphere-zOS-Prereq.sh && chtag -R -tc 819 WebSphere-zOS-Prereq.sh && ./WebSphere-zOS-Prereq.sh`
+
+**NOTE: Instead of transferring above script(via scp/sftp) if you are directly copy pasting on z/OS - USS layer then while executing script remove chtag -R -tc 819 WebSphere-zOS-Prereq.sh from above command.**
 
 #### Output of Execution :
 ![image2.png](image2.png)
@@ -50,7 +58,12 @@ This script checks the prerequisites for WebSphere tracing (i.e., whether the We
 
 Execute the script from USS layer of z/OS with the user which has the root privilege and switching to bash shell.
 
-`chmod +x ./WebSphere-Pid-Trace-Enable.sh && ./WebSphere-Pid-Trace-Enable.sh`
+`bash`
+
+`chmod +x ./WebSphere-Pid-Trace-Enable.sh && chtag -R -tc 819 ./WebSphere-Pid-Trace-Enable.sh && ./WebSphere-Pid-Trace-Enable.sh`
+
+**NOTE: Instead of transferring above script(via scp/sftp) if you are directly copy pasting on z/OS - USS layer then while executing script remove chtag -R -tc 819 ./WebSphere-Pid-Trace-Enable.sh from above command.**
+
 
 #### Output of Execution :
 ![image3.png](image3.png)
@@ -67,7 +80,10 @@ Execute the script from USS layer of z/OS with the user which has the root privi
 
 `bash`
 
-`chmod +x ./setup_agent_airgapped.sh && ./setup_agent_airgapped.sh`
+`chmod +x ./setup_agent_airgapped.sh && chtag -R -tc 819 ./setup_agent_airgapped.sh && ./setup_agent_airgapped.sh`
+
+
+**NOTE: Instead of transferring above script(via scp/sftp) if you are directly copy pasting on z/OS - USS layer then while executing script remove chtag -R -tc 819 ./setup_agent_airgapped.sh from above command.**
 
 #### Output of Execution :
 ![image4.png](image4.png)
