@@ -14,7 +14,7 @@
 # -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
 set -euo pipefail
 
-VERSION="1.1.6"
+VERSION="1.1.7"
 echo "Version: ${VERSION}" >&2
 
 CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
