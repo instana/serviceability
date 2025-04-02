@@ -125,7 +125,7 @@ while read -r POD_NAME; do
             ;;
     esac
 
-    DEST_DIR="${MGDIR}/instana-agent/${POD_NAME}_logs"
+    DEST_DIR="${MGDIR}/${INSTANA_AGENT_NAMESPACE}/${POD_NAME}_logs"
     mkdir -p "$(dirname "${DEST_DIR}")"
 
     echo "Copying logs from pod '${POD_NAME}'..." >&2
