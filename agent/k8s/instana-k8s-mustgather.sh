@@ -1,6 +1,8 @@
 #!/bin/sh
 ###############################################################################
 #
+# Copyright IBM Corp. 2024, 2025
+#
 # This script collects data for the Instana Host Agent on Kubernetes / OpenShift
 #
 # Usage:
