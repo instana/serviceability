@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Copyright IBM Corp. 2024, 2025
 
 # Prompt user for the location of the meta-0.8.2.pax.Z file
 echo "Enter the location of meta-0.8.2.pax.Z file:  PAX_FILE_LOCATION"

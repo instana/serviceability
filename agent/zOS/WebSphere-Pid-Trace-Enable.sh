@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Copyright IBM Corp. 2024, 2025
 # Function to check if the directory for a PID exists under /tmp/.com_ibm_tools_attach
 check_pid_folder() {
     pid=$1

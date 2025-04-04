@@ -1,6 +1,6 @@
 #!/bin/bash
 
-###
+### Copyright IBM Corp. 2024, 2025
 ### Copyright 2019, 2025, Instana Inc.
 ###
 ### Licensed under the Apache License, Version 2.0 (the "License");
