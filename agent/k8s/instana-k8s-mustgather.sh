@@ -1,6 +1,8 @@
 #!/bin/sh
 ###############################################################################
 #
+# Copyright IBM Corp. 2024, 2025
+#
 # This script collects data for the Instana Host Agent on Kubernetes / OpenShift
 #
 # Usage:
@@ -14,7 +16,7 @@
 # -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
 set -euo pipefail
 
-VERSION="1.1.6"
+VERSION="1.1.7"
 echo "Version: ${VERSION}" >&2
 
 CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
@@ -125,7 +127,7 @@ while read -r POD_NAME; do
             ;;
     esac
 
-    DEST_DIR="${MGDIR}/instana-agent/${POD_NAME}_logs"
+    DEST_DIR="${MGDIR}/${INSTANA_AGENT_NAMESPACE}/${POD_NAME}_logs"
     mkdir -p "$(dirname "${DEST_DIR}")"
 
     echo "Copying logs from pod '${POD_NAME}'..." >&2
