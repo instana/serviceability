@@ -1,6 +1,7 @@
 #!/bin/sh
 ###############################################################################
 #
+# Copyright IBM Corp. 2024, 2025
 # This script collects data for the Instana Host Agent on z/OS
 #
 # Usage:
@@ -11,7 +12,6 @@
 # Safer scripting:
 
 # -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
-set -o pipefail
 
 
 
@@ -32,8 +32,7 @@ run_cmd() {
 
 
 
-function collect_agent_logs() {
-
+collect_agent_logs() {
 
 log_folder="$instana_agent_path/data/log"
 # Check if the log folder exists
@@ -43,6 +42,7 @@ if [ ! -d "$log_folder" ]; then
 fi
 
 mkdir -p "${MGDIR}/logs/"
+destination_folder="$MGDIR/logs/"
 for file in "$log_folder"/*; do
     if [ -f "$file" ]; then
         cp "$file" "$destination_folder"
@@ -52,7 +52,7 @@ done
 
 }
 
-function check_user_privilege() {
+check_user_privilege() {
   if [ "$(id -u)" -eq 0 ]; then
     echo "You are root!"
   else
@@ -60,25 +60,25 @@ function check_user_privilege() {
     exit 1
   fi
 }
-function check_zOS_prerequisites() {
+
+check_zOS_prerequisites() {
  if command -v bash > /dev/null && command -v tar > /dev/null; then
-   log_info 'bash and tar are available on the system'
+   echo  "bash and tar are available on the system"
  else
-   log_error 'This script requires bash and tar to be installed on this system. Aborting installation.'
+   echo  "This script requires bash and tar to be installed on this system. Aborting installation."
    exit 1
  fi
 
 }
 
-function instana-zOS-mustgather() {
-    check_user_privilege
-    check_zOS_prerequisites
+instana_zOS_mustgather() {
+
 
     run_cmd id > "${MGDIR}/user-privilege.txt"
     run_cmd java -version > "${MGDIR}/java-version.txt"
 
-    read -p "Enter the instana-agent directory path: for example /u/user1/instana-agent " instana_agent_path
-
+    echo "Enter the instana-agent directory path: for example /u/user1/instana-agent i.e. instana_agent_path "
+    read instana_agent_path
     # Check if the instana-agent directory exists
     if [ ! -d "$instana_agent_path" ]; then
         echo "Error: The specified instana-agent directory does not exist."
@@ -95,7 +95,7 @@ function instana-zOS-mustgather() {
 
 }
 
-if ! instana-zOS-mustgather; then
-  exit 1
-fi
+check_user_privilege
+check_zOS_prerequisites
+instana_zOS_mustgather
 
