@@ -14,9 +14,10 @@
 # -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
 
 
-
+VERSION="1.1.47"
+echo "Version: ${VERSION}" >&2
 CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
-MGDIR="instana-agent-zOS-mustgather-${CURRENT_TIME}"
+MGDIR="instana-agent-zOS-mustgather-${VERSION}-${CURRENT_TIME}"
 mkdir -p "${MGDIR}"
 
 
