@@ -13,10 +13,16 @@
 # Safer scripting:
 # -e  : exit on any command failing
 # -u  : treat unset variables as errors
-# -o pipefail : fail if any command in a pipeline fails (may not be supported on older sh)
-set -euo pipefail
+# -o pipefail : fail if any command in a pipeline fails (not supported by dash)
+SHELL_EXECUTABLE="/bin/sh"
+while IT=$(readlink "${SHELL_EXECUTABLE}"); do SHELL_EXECUTABLE="${IT}"; done
+if [ "${SHELL_EXECUTABLE##*/}" = 'dash' ]; then
+   set -eu
+else
+   set -euo pipefail
+fi
 
-VERSION="1.1.7"
+VERSION="1.1.8"
 echo "Version: ${VERSION}" >&2
 
 CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
