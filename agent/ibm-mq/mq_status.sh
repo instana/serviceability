@@ -7,6 +7,9 @@
 #
 ###############################################################################
 
+VERSION="1.0.0"
+echo "Version: ${VERSION}" >&2
+
 # Check if a queue manager name is provided as an argument
 if [ -z "$1" ]; then
   echo "Usage: $0 <QueueManagerName>"
