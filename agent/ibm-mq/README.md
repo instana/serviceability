@@ -28,6 +28,10 @@ The `mq_status.sh` script will collect the configuration data from running IBM M
    ```bash
    root@ibmmq1:~# ./mq_status.sh QM1
 Version: 1.0.0
+Full Queue Manager Status (dspmq -x -o all):
+QMNAME(QM1)                                               STATUS(Running) DEFAULT(no) STANDBY(Not permitted) INSTNAME(Installation1) INSTPATH(/opt/mqm) INSTVER(9.4.2.0) ROLE(Not configured) INSTANCE() INSYNC() QUORUM() GRPLSN() GRPNAME() GRPROLE(Not configured)
+    INSTANCE(ibmmq1.fyre.ibm.com) MODE(Active)
+
 Queue Manager Definition and Status:
 5724-H72 (C) Copyright IBM Corp. 1994, 2025.
 Starting MQSC for queue manager QM1.
@@ -39,8 +43,8 @@ AMQ8408I: Display Queue Manager details.
    ACCTINT(1800)                           ACCTMQI(OFF)
    ACCTQ(OFF)                              ACTIVREC(MSG)
    ACTVCONO(DISABLED)                      ACTVTRC(OFF)
-   ADVCAP(ENABLED)                         ALTDATE(2025-04-22)
-   ALTTIME(05.42.38)                       AMQPCAP(YES)
+   ADVCAP(ENABLED)                         ALTDATE(2025-05-06)
+   ALTTIME(00.06.10)                       AMQPCAP(YES)
    AUTHOREV(DISABLED)                      CCSID(1208)
    CERTLABL(ibmwebspheremqqm1)             CERTVPOL(ANY)
    CHAD(DISABLED)                          CHADEV(DISABLED)
@@ -77,8 +81,8 @@ AMQ8408I: Display Queue Manager details.
    SSLEV(DISABLED)                         SSLFIPS(NO)
    KEYRPWD( )                              SSLKEYR(/var/mqm/qmgrs/QM1/ssl/key)
    SSLRKEYC(0)                             STATACLS(QMGR)
-   STATCHL(OFF)                            STATINT(1800)
-   STATMQI(OFF)                            STATQ(OFF)
+   STATCHL(OFF)                            STATINT(30)
+   STATMQI(ON)                             STATQ(OFF)
    STRSTPEV(ENABLED)                       SUITEB(NONE)
    SYNCPT                                  TREELIFE(1800)
    TRIGINT(999999999)                      VERSION(09040200)
@@ -94,25 +98,25 @@ Starting MQSC for queue manager QM1.
 AMQ8705I: Display Queue Manager Status Details.
    QMNAME(QM1)                             TYPE(QMGR)
    STATUS(RUNNING)                         AUTOCLUS(NONE)
-   CHINIT(RUNNING)                         CHKPTCNT(217)
-   CHKPTOPS(474)                           CHKPTSZ(0)
-   CMDSERV(RUNNING)                        CONNS(24)
+   CHINIT(RUNNING)                         CHKPTCNT(893)
+   CHKPTOPS(563)                           CHKPTSZ(0)
+   CMDSERV(RUNNING)                        CONNS(44)
    DATFSSZ(SHARED)                         DATFSUSE(SHARED)
-   DATPATH(/var/mqm/qmgrs/QM1)             DISKLSN(<0:0:27:53638>)
+   DATPATH(/var/mqm/qmgrs/QM1)             DISKLSN(<0:0:79:38170>)
    GRPLSN( )                               GRPNAME( )
    GRPROLE(NOTCONFIG)                      HOSTNAME(ibmmq1)
    INSTANCE( )                             INSTDESC( )
    INSTNAME(Installation1)                 INSTPATH(/opt/mqm)
    LDAPCONN(INACTIVE)                      LOGEXTSZ(16392)
    LOGFSSZ(SHARED)                         LOGFSUSE(SHARED)
-   LOGINUSE(5)                             LOGPATH(/var/mqm/log/QM1/active/)
+   LOGINUSE(13)                            LOGPATH(/var/mqm/log/QM1/active/)
    LOGPRIM(3)                              LOGSEC(2)
-   LOGSTRDA(2025-04-26)                    LOGSTRL(<0:0:27:13701>)
-   LOGSTRTI(11:32:56)                      LOGTYPE(CIRCULAR)
-   LOGUTIL(5)                              QMFSSZ(253824)
+   LOGSTRDA(2025-05-12)                    LOGSTRL(<0:0:78:51575>)
+   LOGSTRTI(04:05:21)                      LOGTYPE(CIRCULAR)
+   LOGUTIL(13)                             QMFSSZ(253824)
    QMFSUSE(11)                             QUORUM( )
    REUSESZ(0)                              STANDBY(NOPERMIT)
-   STARTDA(2025-04-27)                     STARTTI(03.38.01)
+   STARTDA(2025-05-12)                     STARTTI(05.53.55)
    UNICLUS( )
 One MQSC command read.
 No commands have a syntax error.
@@ -401,16 +405,82 @@ One MQSC command read.
 No commands have a syntax error.
 All valid MQSC commands were processed.
 
+Channel Authentication Rules (CHLAUTH):
+5724-H72 (C) Copyright IBM Corp. 1994, 2025.
+Starting MQSC for queue manager QM1.
+
+
+     1 : DISPLAY CHLAUTH(*) ALL
+AMQ8878I: Display channel authentication record details.
+   CHLAUTH(DEV.ADMIN.SVRCONN)              TYPE(USERMAP)
+   DESCR(Allows admin user to connect via ADMIN channel)
+   CUSTOM( )                               ADDRESS( )
+   CLNTUSER(admin)                         USERSRC(CHANNEL)
+   CHCKCLNT(ASQMGR)                        ALTDATE(2025-04-22)
+   ALTTIME(03.01.08)
+AMQ8878I: Display channel authentication record details.
+   CHLAUTH(DEV.ADMIN.SVRCONN)              TYPE(BLOCKUSER)
+   DESCR(Allows admins on ADMIN channel)   CUSTOM( )
+   USERLIST(nobody)                        WARN(NO)
+   ALTDATE(2025-04-22)                     ALTTIME(03.01.08)
+AMQ8878I: Display channel authentication record details.
+   CHLAUTH(DEV.APP.SVRCONN)                TYPE(ADDRESSMAP)
+   DESCR(Allows connection via APP channel)
+   CUSTOM( )                               ADDRESS(*)
+   USERSRC(CHANNEL)                        CHCKCLNT(REQUIRED)
+   ALTDATE(2025-04-22)                     ALTTIME(03.01.08)
+AMQ8878I: Display channel authentication record details.
+   CHLAUTH(SYSTEM.*)                       TYPE(ADDRESSMAP)
+   DESCR(Default rule to disable all SYSTEM channels)
+   CUSTOM( )                               ADDRESS(*)
+   USERSRC(NOACCESS)                       WARN(NO)
+   ALTDATE(2025-04-22)                     ALTTIME(03.01.07)
+AMQ8878I: Display channel authentication record details.
+   CHLAUTH(*)                              TYPE(ADDRESSMAP)
+   DESCR(Back-stop rule - Blocks everyone)
+   CUSTOM( )                               ADDRESS(*)
+   USERSRC(NOACCESS)                       WARN(NO)
+   ALTDATE(2025-04-22)                     ALTTIME(03.01.08)
+AMQ8878I: Display channel authentication record details.
+   CHLAUTH(*)                              TYPE(BLOCKUSER)
+   DESCR(Default rule to disallow privileged users)
+   CUSTOM( )
+   USERLIST(*MQADMIN)                      WARN(NO)
+   ALTDATE(2025-04-22)                     ALTTIME(03.01.07)
+One MQSC command read.
+No commands have a syntax error.
+All valid MQSC commands were processed.
+
 Channel Statuses:
 5724-H72 (C) Copyright IBM Corp. 1994, 2025.
 Starting MQSC for queue manager QM1.
 
 
      1 : DISPLAY CHSTATUS(*) ALL
-AMQ8420I: Channel Status not found.
+AMQ8417I: Display Channel Status details.
+   CHANNEL(SYSTEM.ADMIN.SVRCONN)           CHLTYPE(SVRCONN)
+   BUFSRCVD(19240)                         BUFSSENT(19274)
+   BYTSRCVD(2507796)                       BYTSSENT(27846476)
+   CHSTADA(2025-05-12)                     CHSTATI(05.54.01)
+   COMPHDR(NONE,NONE)                      COMPMSG(NONE,NONE)
+   COMPRATE(0,0)                           COMPTIME(0,0)
+   CONNAME(9.38.73.124)                    CURRENT
+   EXITTIME(0,0)                           HBINT(300)
+   JOBNAME(0000253C00000003)               LOCLADDR(9.30.219.53(1415))
+   LSTMSGDA(2025-05-12)                    LSTMSGTI(06.31.24)
+   MCASTAT(RUNNING)                        MCAUSER(root)
+   MONCHL(OFF)                             MSGS(19218)
+   RAPPLTAG(org.apache.karaf.main.Main)    SECPROT(NONE)
+   SSLCERTI( )                             SSLCIPH( )
+   SSLKEYDA( )                             SSLKEYTI( )
+   SSLPEER( )                              SSLRKEYS(0)
+   STATUS(RUNNING)                         STOPREQ(NO)
+   SUBSTATE(RECEIVE)                       CURSHCNV(10)
+   MAXSHCNV(10)                            RVERSION(09040005)
+   RPRODUCT(MQJB)
 One MQSC command read.
 No commands have a syntax error.
-One valid MQSC command could not be processed.
+All valid MQSC commands were processed.
 
 Listener Definitions:
 5724-H72 (C) Copyright IBM Corp. 1994, 2025.
@@ -448,15 +518,15 @@ Starting MQSC for queue manager QM1.
      1 : DISPLAY LSSTATUS(*) ALL
 AMQ8631I: Display listener status details.
    LISTENER(DEV.LISTENER.TCP)              STATUS(RUNNING)
-   PID(3887)                               STARTDA(2025-04-27)
-   STARTTI(03.38.01)                       DESCR( )
+   PID(9495)                               STARTDA(2025-05-12)
+   STARTTI(05.53.56)                       DESCR( )
    TRPTYPE(TCP)                            CONTROL(QMGR)
    IPADDR(*)                               PORT(1414)
    BACKLOG(100)
 AMQ8631I: Display listener status details.
    LISTENER(SYSTEM.ADMIN.LISTENER)         STATUS(RUNNING)
-   PID(3890)                               STARTDA(2025-04-27)
-   STARTTI(03.38.01)                       DESCR( )
+   PID(9496)                               STARTDA(2025-05-12)
+   STARTTI(05.53.56)                       DESCR( )
    TRPTYPE(TCP)                            CONTROL(QMGR)
    IPADDR(*)                               PORT(1415)
    BACKLOG(100)
