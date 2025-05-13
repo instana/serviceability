@@ -12,7 +12,7 @@ echo "Version: ${VERSION}" >&2
 
 # Function to check if the user belongs to the 'mqm' group
 check_mqm_group() {
-  if ! id -nG "$USER" | grep -qw "mqm"; then
+  if ! groups | grep -qw "mqm"; then
     echo "Error: User '$USER' does not belong to the 'mqm' group. Exiting." >&2
     exit 1
   fi
