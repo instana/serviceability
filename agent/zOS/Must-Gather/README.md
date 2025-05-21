@@ -1,4 +1,4 @@
-# Instana Kubernetes Must-Gather Script
+# Instana z/OS Must-Gather Script
 
 ## Table of Contents
 
