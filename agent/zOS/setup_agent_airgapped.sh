@@ -103,8 +103,16 @@ function setup_agent_airgapped() {
         check_zOS_server_update_prerequisites
         check_existing_instana_agent
         log_info "Installing Instana agent"
+        EXPECTED_FILE="org.apache.felix.framework-*.jar"
+        DIR="$AGENT_DIR_ZOS/system/org/apache/felix/org.apache.felix.framework/"
         gzip -d ${file_path}
         pax -r -f ${file_path%.gz}
+        if ls "$DIR"/*/org.apache.felix.framework-*.jar 2>/dev/null | grep -q .; then
+            echo "The required file is available for further installation process of instana-agent i.e. $EXPECTED_FILE"
+        else
+            echo "The required file NOT found: i.e. $EXPECTED_FILE, Issue during download/Untar of build aborting further installation"
+            exit 1
+        fi
 
         export _BPXK_AUTOCVT=ON
         echo 'INFO: Auto Character Conversion (export _BPXK_AUTOCVT=ON) is enabled for this session. For convenience it is recommended to set this in your User Profile, so you don’t need to export it each time you log in'
