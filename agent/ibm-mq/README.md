@@ -6,6 +6,8 @@ The `mq_status.sh` script will collect the configuration data from running IBM M
 
 ## Usage
 
+### Linux
+
 1. Copy the script to the environment where ibm mq is running
 2. Make the scirpt executable.
    
@@ -17,6 +19,17 @@ The `mq_status.sh` script will collect the configuration data from running IBM M
    ```bash
    . /opt/mqm/bin/setmqenv -s
    ./mq_status.sh QueueManagerName
+   ```
+
+### Windows
+
+1. Copy the script to the environment where ibm mq is running
+2. Run the script
+
+   ```powershell
+   cd "C:\Program Files\IBM\MQ\bin"
+   setmqenv -s
+   ./mq_status.ps1 QueueManagerName
    ```
 
    This will display the below details:
