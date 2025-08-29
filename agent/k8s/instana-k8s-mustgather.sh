@@ -48,7 +48,7 @@ else
 fi
 
 ###############################################################################
-# Determine if we're on OpenShift (oc) or vanilla K8s (kubectl)
+# Determine if we're on OpenShift or vanilla K8s
 ###############################################################################
 if ${CMD} api-resources | grep openshift > /dev/null 2>&1; then
     LIST_NS="${INSTANA_AGENT_NAMESPACE} openshift-controller-manager"
