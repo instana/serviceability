@@ -34,18 +34,29 @@ mkdir -p "${MGDIR}"
 ###############################################################################
 : "${INSTANA_AGENT_NAMESPACE:=instana-agent}"
 
+
 ###############################################################################
-# Determine if we're on OpenShift (oc) or vanilla K8s (kubectl)
+# Determine which tool to use (oc or kubectl)
 ###############################################################################
 if command -v oc >/dev/null 2>&1; then
     CMD="oc"
-    LIST_NS="${INSTANA_AGENT_NAMESPACE} openshift-controller-manager"
 elif command -v kubectl >/dev/null 2>&1; then
     CMD="kubectl"
-    LIST_NS="${INSTANA_AGENT_NAMESPACE}"
 else
     echo "ERROR: Neither 'oc' nor 'kubectl' is installed or in PATH." >&2
     exit 1
+fi
+
+###############################################################################
+# Determine if we're on OpenShift or vanilla K8s
+###############################################################################
+if ${CMD} api-resources | grep openshift > /dev/null 2>&1; then
+    LIST_NS="${INSTANA_AGENT_NAMESPACE} openshift-controller-manager"
+    OPENSHIFT=1
+    echo "Detected an Openshift cluster"
+else
+    LIST_NS="${INSTANA_AGENT_NAMESPACE}"
+    OPENSHIFT=0
 fi
 
 ###############################################################################
@@ -77,7 +88,7 @@ run_cmd "${CMD}" describe nodes > "${MGDIR}/node-describe.txt"
 run_cmd "${CMD}" get namespaces > "${MGDIR}/namespaces.txt"
 
 # If on OpenShift, gather clusteroperators
-if [ "${CMD}" = "oc" ]; then
+if [ ${OPENSHIFT} = "1" ]; then
     run_cmd "${CMD}" get clusteroperators > "${MGDIR}/cluster-operators.txt"
 fi
 
@@ -150,7 +161,7 @@ done < "${MGDIR}/instana-agent-pod-names.txt"
 ###############################################################################
 # If on OpenShift, gather pods in openshift-controller-manager namespace
 ###############################################################################
-if [ "${CMD}" = "oc" ]; then
+if [ ${OPENSHIFT} = "1" ]; then
     run_cmd "${CMD}" get pods -n openshift-controller-manager -o wide \
         > "${MGDIR}/openshift-controller-manager-pod-list.txt"
 fi
