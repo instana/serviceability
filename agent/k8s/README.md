@@ -74,7 +74,14 @@ No additional system configurations are required beyond the standard tools liste
 
 ### Command-Line Arguments
 
-This script does not accept command-line arguments. Simply run it as shown above.
+The script accepts the following command-line arguments:
+
+- `-n NAMESPACE`: Specify the Instana agent namespace (default: instana-agent)
+- `-h`: Display help message
+
+Example:
+```bash
+./instana-k8s-mustgather.sh -n custom-agent-namespace
 
 ### Expected Output
 

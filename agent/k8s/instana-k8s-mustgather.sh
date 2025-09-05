@@ -6,9 +6,40 @@
 # This script collects data for the Instana Host Agent on Kubernetes / OpenShift
 #
 # Usage:
-#   ./instana-k8s-mustgather.sh
+#   ./instana-k8s-mustgather.sh [-n NAMESPACE]
+#
+# Options:
+#   -n NAMESPACE  Specify the Instana agent namespace (default: instana-agent)
+#   -h            Display this help message
 #
 ###############################################################################
+
+# Display usage information
+show_usage() {
+    echo "Usage: $0 [-n NAMESPACE]"
+    echo ""
+    echo "Options:"
+    echo "  -n NAMESPACE  Specify the Instana agent namespace (default: instana-agent)"
+    echo "  -h            Display this help message"
+    exit 1
+}
+
+# Parse command-line arguments
+while getopts "n:h" opt; do
+    case ${opt} in
+        n)
+            INSTANA_AGENT_NAMESPACE="${OPTARG}"
+            ;;
+        h)
+            show_usage
+            ;;
+        \?)
+            echo "Invalid option: -${OPTARG}" >&2
+            show_usage
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
 
 # Safer scripting:
 # -e  : exit on any command failing
@@ -22,7 +53,7 @@ else
    set -euo pipefail
 fi
 
-VERSION="1.1.8"
+VERSION="1.1.9"  # Updated version number
 echo "Version: ${VERSION}" >&2
 
 CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
