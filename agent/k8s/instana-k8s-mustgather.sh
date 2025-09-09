@@ -21,7 +21,6 @@ show_usage() {
     echo "Options:"
     echo "  -n NAMESPACE  Specify the Instana agent namespace (default: instana-agent)"
     echo "  -h            Display this help message"
-    exit 1
 }
 
 # Parse command-line arguments
@@ -32,10 +31,12 @@ while getopts "n:h" opt; do
             ;;
         h)
             show_usage
+            exit 0
             ;;
         \?)
             echo "Invalid option: -${OPTARG}" >&2
             show_usage
+            exit 1
             ;;
     esac
 done
