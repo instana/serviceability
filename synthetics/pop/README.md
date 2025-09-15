@@ -1,6 +1,7 @@
 # Synthetic PoP Log Collection Tool
 
 ## Table of Contents
+- [Script](#script)
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
@@ -9,6 +10,10 @@
 - [Examples](#examples)
 - [Output](#output)
 - [Troubleshooting](#troubleshooting)
+
+## Script
+The `pdcollect.sh` script used for data collection can be found in the external repository:
+[pdcollect.sh](https://github.com/instana/synthetic-pop-charts/blob/main/pdcollect.sh)
 
 ## Overview
 
