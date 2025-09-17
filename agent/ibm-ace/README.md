@@ -79,26 +79,6 @@ To generate a log file that can be shared with support teams, redirect the outpu
 > - `>` redirects standard output to the specified file
 > - `2>&1` redirects standard error to the same destination as standard output
 > - Together, this ensures that both normal output and error messages are captured in the log file
->
-> **About error messages:**
-> - Without redirection, error messages would appear only in the terminal/console
-> - If you use only `> ace_mustgather.log` (without `2>&1`):
->   - Normal output will be written to the log file
->   - Error messages will still appear in the terminal but **will not** be written to the log file
-> - With the complete `> ace_mustgather.log 2>&1` redirection:
->   - Both normal output and error messages are captured in the same log file
->   - Nothing appears in the terminal (all output goes to the file)
-> - There is no separate error log file - all output (including errors) goes to the single specified log file
->
-> **When might error messages occur?**
-> Error messages may appear during script execution in scenarios such as:
-> - Required tools or commands not found (e.g., mqsilist, runmqsc)
-> - Incorrect paths to ACE or MQ installations
-> - Insufficient permissions to access files or run commands
-> - Integration nodes or queue managers not running or accessible
-> - Network connectivity issues preventing API calls
->
-> Capturing these error messages in the log file is crucial for troubleshooting.
 
 ### Windows Output
 
