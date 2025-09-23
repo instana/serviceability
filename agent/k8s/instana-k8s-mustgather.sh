@@ -25,7 +25,7 @@ command_exists() {
 # exit_with_missing_tool_error is a utility function to exit with missing tool
 exit_with_missing_tool_error() {
     echo "ERROR: '$1' is not installed or not in PATH." >&2
-    exit 1
+    exit 2
 }
 
 # determine_cli checks what CLI-tools are available and default to the first one
