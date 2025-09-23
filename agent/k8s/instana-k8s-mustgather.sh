@@ -16,7 +16,7 @@
 
 # command_exists checks if command is available for us or not
 command_exists() {
-    if command "$1" &> /dev/null; then
+    if command "$1" >/dev/null 2>&1; then
         return 0
     fi
     return 1
@@ -109,7 +109,7 @@ echo "Version: ${VERSION}" >&2
 # Determine which tool to use (oc or kubectl)
 ###############################################################################
 CLI=$(determine_cli)
-PLATFORM=$(determine_platform $CLI)
+PLATFORM=$(determine_platform "$CLI")
 
 ###############################################################################
 # Verify required utilities are available
@@ -117,8 +117,8 @@ PLATFORM=$(determine_platform $CLI)
 UTILITIES="awk sed tar"
 
 for UTILITY in ${UTILITIES}; do
-    if ! command_exists $UTILITY; then
-        exit_with_missing_tool_error $UTILITY
+    if ! command_exists "$UTILITY"; then
+        exit_with_missing_tool_error "$UTILITY"
     fi
 done
 
@@ -206,9 +206,9 @@ while read -r POD_NAME; do
     fi
 
     echo "Executing Agent Diagnostics collection on pod '${POD_NAME}'...">&2
-    run_cmd "${CLI}" exec -i $POD_NAME -n $INSTANA_AGENT_NAMESPACE -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar version > "${DEST_DIR}_diagnostics_version"
-    run_cmd "${CLI}" exec -i $POD_NAME -n $INSTANA_AGENT_NAMESPACE -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-ports > "${DEST_DIR}_diagnostics_check-ports"
-    run_cmd "${CLI}" exec -i $POD_NAME -n $INSTANA_AGENT_NAMESPACE -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-configuration > "${DEST_DIR}_diagnostics_check-configuration"
+    run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar version > "${DEST_DIR}_diagnostics_version"
+    run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-ports > "${DEST_DIR}_diagnostics_check-ports"
+    run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-configuration > "${DEST_DIR}_diagnostics_check-configuration"
     echo "Execution on pod '${POD_NAME} complete'...">&2
 
 done < "${MUSTGATHER_DIR}/instana-agent-pod-names.txt"
@@ -276,7 +276,7 @@ gather_namesace_data() {
 ###############################################################################
 NAMESPACES=$INSTANA_AGENT_NAMESPACE
 
-if [ "$PLATFORM" == "OpenShift" ]; then
+if [ "$PLATFORM" = "OpenShift" ]; then
     NAMESPACES="${NAMESPACES} openshift-controller-manager"
 fi
 
