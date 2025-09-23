@@ -16,7 +16,7 @@
 
 # command_exists checks if command is available for us or not
 command_exists() {
-    if command -v "$1" &> /dev/null; then
+    if command "$1" &> /dev/null; then
         return 0
     fi
     return 1
