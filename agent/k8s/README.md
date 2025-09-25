@@ -29,12 +29,13 @@ The `instana-k8s-mustgather.sh` script is designed to collect diagnostic data fo
 ## Prerequisites
 
 1. **Cluster command-line tool**  
-   - **OpenShift**: `oc`  
-   - **Kubernetes**: `kubectl`  
+   - **OpenShift**: `oc`
+   - **Kubernetes**: `kubectl`
    (Must be installed and authenticated for your cluster)
 2. **Additional utilities**  
-   - `awk`  
-   - `sed`  
+   - `awk`
+   - `sed`
+   - `tar`
    - A shell that supports `set -euo pipefail` (modern Bash or similar).
 3. **Sufficient permissions**  
    - Ensure you have the necessary permissions to read namespaces, pods, secrets, and copy logs from pods in your cluster.
