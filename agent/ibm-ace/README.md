@@ -127,6 +127,7 @@ The Windows script automatically creates a directory named `ace_mustgather_YYYYM
   - Service logon rights
   - node.conf.yaml file
   - ACE rest api credentials test
+  - All running process list
 
 The location of the output directory is displayed at the end of script execution:
 ```

@@ -215,6 +215,9 @@ if (-not $AdminURL) {
     }
 }
 
+Show-Section "All running process details"
+
+Get-Process
 
 Write-Host "`n== ACE Must-Gather Completed: $(Get-Date) =="
 Stop-Transcript
