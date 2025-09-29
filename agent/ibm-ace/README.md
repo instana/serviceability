@@ -38,9 +38,40 @@ The IBM ACE Must Gather scripts collect diagnostic data from IBM App Connect Ent
 3. Run the script:
 
    ```powershell
-   .\instana-ace-mustgather.ps1
+   # Examine only the specified integration node
+   powershell .\instana-ace-mustgather.ps1 -NodeName iNode1
+
+   # Examine only the specified queue manager
+   powershell .\instana-ace-mustgather.ps1 -QueueManager QM1
+
+   # Examine node and queue manager, and verify ACE credentials (without username/password)
+   powershell .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415
+
+   # Examine node and queue manager, and verify ACE credentials (with username/password)
+   powershell .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass
+   
+   # Examine node and queue manager, and verify ACE credentials with username/password on a custom API (e.g., apiv1 for IIB10)
+   powershell .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass -CustomApi apiv1
    ```
 
+   **If you encounter any kind of problem while running the above command**, try using these commands(inside ibm ace console):
+   
+      ```powershell
+   # Examine only the specified integration node
+   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1
+
+   # Examine only the specified queue manager
+   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -QueueManager QM1
+
+   # Examine node and queue manager, and verify ACE credentials (without username/password)
+   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415
+
+   # Examine node and queue manager, and verify ACE credentials (with username/password)
+   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass
+   
+   # Examine node and queue manager, and verify ACE credentials with username/password on a custom API (e.g., apiv1 for IIB10)
+   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass -CustomApi apiv1
+   ```
 ## Script Output
 
 The scripts collect the following information:
@@ -94,6 +125,8 @@ The Windows script automatically creates a directory named `ace_mustgather_YYYYM
   - TCP port usage
   - Resource and flow statistics
   - Service logon rights
+  - node.conf.yaml file
+  - ACE rest api credentials test
 
 The location of the output directory is displayed at the end of script execution:
 ```
