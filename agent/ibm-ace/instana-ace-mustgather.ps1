@@ -15,6 +15,7 @@ param (
 #   .\instana-ace-mustgather.ps1 -QueueManager QM1                    # Examines only the specified queue manager
 #   .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415   # Examines only the specified node, queue manager and verifies the ace credentials without username and password
 #   .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass  # Examines only the specified node, queue manager and verifies the ace credentials with username and password
+#   .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass -CustomApi apiv1  # Examines only the specified node, queue manager and verifies the ace credentials with username and password on custom api. For eg: apiv1(IIB10)
 
 $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
 $outDir = "ace_mustgather_$ts"
@@ -76,8 +77,11 @@ if (-not $NodeName -and -not $QueueManager) {
   Show-Section "MQSC: Listener Status for $QueueManager"
   echo "DISPLAY LSSTATUS(*) ALL" | runmqsc $QueueManager | Out-String
 
-  Show-Section "MQSC: Channel Authentication Rules for $QueueManager"
-  echo "DISPLAY CHLAUTH(*)" | runmqsc $QueueManager
+  Show-Section "MQSC: Check connection authentication for $QueueManager"
+  echo "dis qmgr connauth" | runmqsc $QueueManager
+
+  Show-Section "MQSC: Channel Authentication for $QueueManager"
+  echo "dis qmgr chlauth" | runmqsc $QueueManager
 
   Show-Section "MQSC: Channel Status for $QueueManager"
   echo "DISPLAY CHSTATUS(*)" | runmqsc $QueueManager
