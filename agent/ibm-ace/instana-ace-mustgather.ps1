@@ -34,11 +34,10 @@ Write-Host "== ACE Must-Gather Started: $(Get-Date) =="
 
 # 1. mqsilist summary + running integration server
 Show-Section "mqsilist Summary"
-$mqsisumm = mqsilist -a -d 1 | Tee-Object -Variable lines
-$mqsisumm
+mqsilist
 
-Show-Section "Running Integration Servers"
-$lines | Where-Object { $_ -match "Integration server '(.+?)' on integration node '(.+?)' is running" }
+Show-Section "Running Integration Servers on $NodeName"
+mqsilist $NodeName
 
 # 2. whoami /groups filtered
 Show-Section "whoami /groups (mqm & mqbrkrs)"
@@ -193,31 +192,50 @@ if (-not $AdminURL) {
       $FullURL = "$AdminURL/$CustomApi"
     }
     Write-Host "Testing $FullURL"
-    $curlCommand = "curl.exe -u ${User}:${Pass} -H `"Accept: application/json`" `"$FullURL`""
-
-    try {
-        $output = Invoke-Expression $curlCommand
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "!! curl failed with exit code $LASTEXITCODE"
-        } elseif ($output -match 'BIP8509E') {
-            Write-Host "!! Invalid credentials. Please check your username and password."
-        } elseif ($output -match '^{.*}$') {
+    
+    # Create credential object if username and password are provided
+    if ($User -and $Pass) {
+        $securePassword = ConvertTo-SecureString $Pass -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential($User, $securePassword)
+        
+        try {
+            $response = Invoke-RestMethod -Uri $FullURL -Credential $credential -Headers @{"Accept"="application/json"} -ErrorAction Stop
             Write-Host "Authentication successful. JSON response received."
-            Write-Output $output
-        } else {
-            Write-Host "!! Unexpected response format. Possibly HTML or another error."
-            Write-Output $output
+            Write-Host "-------------------"
+              $response | Format-List | Out-String | Write-Host
+        } catch {
+            if ($_.Exception.Response.StatusCode.value__ -eq 401) {
+                Write-Host "!! Invalid credentials. Please check your username and password."
+            } elseif ($_.ToString() -match 'BIP8509E') {
+                Write-Host "!! Invalid credentials. Please check your username and password."
+            } else {
+                Write-Host "!! Error occurred: $($_.Exception.Message)"
+                if ($_.Exception.Response) {
+                    Write-Host "Status Code: $($_.Exception.Response.StatusCode.value__)"
+                }
+            }
         }
-    } catch {
-        Write-Host "!! Exception occurred:"
-        Write-Host $_.Exception.Message
+    } else {
+        # No credentials provided, try without authentication
+        try {
+            $response = Invoke-RestMethod -Uri $FullURL -Headers @{"Accept"="application/json"} -ErrorAction Stop
+            Write-Host "Connection successful. JSON response received."
+            Write-Host "-------------------"
+              $response | Format-List | Out-String | Write-Host
+        } catch {
+            Write-Host "!! Error occurred: $($_.Exception.Message)"
+            if ($_.Exception.Response) {
+                Write-Host "Status Code: $($_.Exception.Response.StatusCode.value__)"
+            }
+        }
     }
 }
 
 Show-Section "All running process details"
 
-Get-Process
+# Get detailed process information including command line arguments and save to file
+Get-CimInstance Win32_Process | Select-Object -Property Name, ProcessId, CommandLine > "$outDir\processes.txt"
+Write-Host "Detailed process information saved to: $outDir\processes.txt"
 
 Write-Host "`n== ACE Must-Gather Completed: $(Get-Date) =="
 Stop-Transcript
