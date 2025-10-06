@@ -86,6 +86,7 @@ if (-not $NodeName -and -not $QueueManager) {
   echo "DISPLAY CHSTATUS(*)" | runmqsc $QueueManager
 } else {
   Write-Host "Skipping MQSC collection. Please provide QueueManager parameter to collect MQSC information."
+  Write-Host "Example: .\instana-ace-mustgather.ps1 -QueueManager YourQMName"
 }
 
 # 6. TCP Ports used by ACE/MQ Processes
@@ -108,6 +109,7 @@ Show-Section "Resource and Flow Stats"
 # Check if NodeName is provided
 if (-not $NodeName -and -not $QueueManager) {
   Write-Host "Skipping resource and flow stats. Please provide NodeName parameter."
+  Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
 } elseif ($NodeName) {
   # If NodeName is provided, collect stats for that specific node
   Write-Host "Collecting resource and flow stats for specified node: $NodeName"
@@ -129,6 +131,7 @@ if (-not $NodeName -and -not $QueueManager) {
   }
 } else {
   Write-Host "Skipping resource and flow stats. NodeName parameter is required for this section."
+  Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
 }
 
 # 7. “Log on as service” policy
@@ -155,6 +158,7 @@ Show-Section "Integration Node Overrides"
 # Check if either NodeName or QueueManager is provided
 if (-not $NodeName -and -not $QueueManager) {
     Write-Host "Skipping integration node overrides. Please provide NodeName parameter."
+    Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
 } elseif (-not $NodeName) {
     Write-Host "NodeName parameter is required to examine integration node overrides."
     Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
