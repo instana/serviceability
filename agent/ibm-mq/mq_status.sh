@@ -47,6 +47,11 @@ QMGR_NAME="$1"
 # Check if the queue manager is running
 check_qmgr_running "$QMGR_NAME"
 
+# Display installation details
+echo "IBM MQ installation details"
+dspmqver
+echo
+
 # Display full status of all queue managers
 echo "Full Queue Manager Status (dspmq -x -o all):"
 dspmq -x -o all
