@@ -32,6 +32,21 @@ function Show-Section {
 
 Write-Host "== ACE Must-Gather Started: $(Get-Date) =="
 
+if (-not $NodeName -and -not $QueueManager -and -not $AdminURL -and -not $User -and -not $Pass -and -not $CustomApi) {
+    Write-Host "!! Warning: No arguments provided."
+    Write-Host ""
+    Write-Host "Basic Usage (choose at least one):"
+    Write-Host "  .\instana-ace-mustgather.ps1 -NodeName iNode1              # Collect data for a specific integration node"
+    Write-Host "  .\instana-ace-mustgather.ps1 -QueueManager QM1             # Collect data for a specific queue manager"
+    Write-Host ""
+    Write-Host "API Verification (with or without authentication):"
+    Write-Host "  .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415"
+    Write-Host "  .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass"
+    Write-Host ""
+    Write-Host "For IIB10 users (using custom API version):"
+    Write-Host "  .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -CustomApi apiv1"
+}
+
 # 1. mqsilist summary + running integration server
 Show-Section "mqsilist Summary"
 mqsilist
