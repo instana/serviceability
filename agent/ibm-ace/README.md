@@ -14,21 +14,23 @@ The IBM ACE Must Gather scripts collect diagnostic data from IBM App Connect Ent
    ```bash
    chmod +x instana-ace-mustgather.sh
    ```
-3. Run the script in one of the following modes:
+3. Run the script with appropriate parameters:
 
-   **Interactive mode** (discovers and analyzes all integration nodes):
    ```bash
-   ./instana-ace-mustgather.sh
-   ```
-
-   **Simple command-line mode** (specify ACE installation path):
-   ```bash
-   ./instana-ace-mustgather.sh -p /path/to/ace/installation [-m /path/to/mq/bin]
-   ```
-
-   **Advanced command-line mode** (specify connection details for a specific integration node):
-   ```bash
-   ./instana-ace-mustgather.sh -h ACE_HOST -a API_PORT -b INTEGRATION_NODE [-u USERNAME] [-q QM_NAME] [-r PROTOCOL] [-v API_VERSION] [-m MQ_PATH]
+   # Examine only the specified integration node
+   ./instana-ace-mustgather.sh -n iNode1
+   
+   # Examine only the specified queue manager
+   ./instana-ace-mustgather.sh -q QM1
+   
+   # Examine node and queue manager, and verify ACE credentials (without username/password)
+   ./instana-ace-mustgather.sh -n iNode1 -q QM1 -a http://acehost:4414
+   
+   # Examine node and queue manager, and verify ACE credentials (with username/password)
+   ./instana-ace-mustgather.sh -n iNode1 -q QM1 -a http://acehost:4414 -u adminUser -p myStrongPass
+   
+   # Examine node and queue manager, and verify ACE credentials with username/password on a custom API (e.g., apiv1 for IIB10)
+   ./instana-ace-mustgather.sh -n iNode1 -q QM1 -a http://acehost:4414 -u adminUser -p myStrongPass -c apiv1
    ```
 
 ### Windows
@@ -88,28 +90,27 @@ The scripts collect the following information:
 
 ### Linux Output
 
-The Linux script provides detailed output directly to the console, organized by sections:
+The Linux script automatically creates a directory named `ace_mustgather_YYYYMMDD_HHMMSS` containing:
 
-- ACE credentials testing
-- TLS encryption information
-- MQ or MQTT usage determination
-- Port configurations
-- Channel authentication settings (for MQ)
+- `gather.log`: Complete transcript of all collected information that can be shared with support teams
+- `processes.txt`: Detailed information about running ACE/MQ processes
+- `system_info.txt`: System information including OS, CPU, memory, and disk usage
+- `ace_api_response.json`: API response from ACE credentials test (if performed)
+- The log file includes organized sections for:
+  - mqsilist summary
+  - Running integration servers
+  - Group memberships
+  - MQSC command outputs
+  - TCP port usage
+  - Resource and flow statistics
+  - Integration node overrides
+  - ACE credentials test
+  - Process information
 
-To generate a log file that can be shared with support teams, redirect the output to a file:
-
-```bash
-# Example with specific ACE and MQ paths
-./instana-ace-mustgather.sh -p /opt/IBM/ace-13.0.3.1 -m /opt/mqm/bin > ace_mustgather.log 2>&1
-
-# Example in interactive mode
-./instana-ace-mustgather.sh > ace_mustgather.log 2>&1
+The location of the output directory is displayed at the end of script execution:
 ```
-
-> **Note about redirection syntax:**
-> - `>` redirects standard output to the specified file
-> - `2>&1` redirects standard error to the same destination as standard output
-> - Together, this ensures that both normal output and error messages are captured in the log file
+Results in: ace_mustgather_YYYYMMDD_HHMMSS
+```
 
 ### Windows Output
 
@@ -138,23 +139,17 @@ Results in: ace_mustgather_YYYYMMDD_HHMMSS
 
 ### Linux Script Options
 
-- `-p ACE_PATH`: Path to the IBM ACE installation folder
-- `-m MQ_PATH`: Path to the IBM MQ bin directory containing runmqsc
-- `-h ACE_HOST`: ACE host name or IP address
-- `-a API_PORT`: Integration node API port
-- `-b INTEGRATION_NODE`: Integration node name
-- `-u USERNAME`: Username for authentication (optional)
-- `-q QM_NAME`: Queue Manager name (if MQ is used, optional)
-- `-r PROTOCOL`: Protocol (http or https, default: http)
-- `-v API_VERSION`: API version (apiv1 for IIB10, apiv2 for ACE11 or later)
-- `-i`: Force interactive mode
+- `-n NODE_NAME`: Integration node name
+- `-q QUEUE_MANAGER`: Queue manager name
+- `-a ADMIN_URL`: Administration URI (e.g., http://acehost:4414)
+- `-u USER`: Username for authentication (optional)
+- `-p PASS`: Password for authentication (optional)
+- `-c CUSTOM_API`: API version (e.g., apiv1 for IIB10, default is apiv2)
+- `-h`: Display help message
 
 ## Additional Notes
 
 - The scripts automatically detect whether IBM ACE is using MQ or MQTT for messaging
 - For MQ environments, the scripts check channel authentication settings which are critical for Instana monitoring
-- The Linux script can run in interactive mode to discover all integration nodes or in command-line mode for specific diagnostics
 - The Windows script must be run in the IBM ACE Command Console to ensure the proper environment is loaded
-- Both scripts generate output that can be easily shared with Instana support teams:
-  - For Linux: Redirect output to a file using `> filename.log 2>&1`
-  - For Windows: Share the automatically generated `gather.log` file from the output directory
+- Both scripts generate output that can be easily shared with Instana support teams by providing the automatically generated output directory containing log files and diagnostic information
