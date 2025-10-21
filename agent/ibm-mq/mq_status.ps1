@@ -65,6 +65,11 @@ $QMGR_NAME = $args[0]
 # Check if the queue manager is running
 Check-QmgrRunning -QueueManager $QMGR_NAME
 
+# Display installation details
+Write-Host "`nIBM MQ installation details"
+dspmqver
+Write-Host ""
+
 # Display full status of all queue managers
 Write-Host "`nFull Queue Manager Status (dspmq -x -o all):"
 & dspmq -x -o all

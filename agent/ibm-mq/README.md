@@ -49,6 +49,22 @@ Queue Manager Definition and Status:
 5724-H72 (C) Copyright IBM Corp. 1994, 2025.
 Starting MQSC for queue manager QM1.
 
+IBM MQ installation details
+Name:        IBM MQ
+Version:     9.4.1.0
+Level:       p941-L241009.DE
+BuildType:   IKAP - (Production)
+Platform:    IBM MQ for Windows (x64 platform)
+Mode:        64-bit
+O/S:         Windows 10 Enterprise x64 Edition, Build 19045
+InstName:    Installation1
+InstDesc:
+Primary:     Yes
+InstPath:    C:\Program Files\IBM\MQ
+DataPath:    C:\ProgramData\IBM\MQ
+MaxCmdLevel: 941
+LicenseType: Developer
+ReleaseType: Continuous Delivery (CD)
 
      1 : DISPLAY QMGR ALL
 AMQ8408I: Display Queue Manager details.
