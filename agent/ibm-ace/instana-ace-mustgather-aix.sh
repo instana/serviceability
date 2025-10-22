@@ -52,6 +52,23 @@ while getopts ":n:q:a:u:p:c:h" opt; do
     esac
 done
 
+# Check if no arguments were provided
+if [ $# -eq 0 ] && [ -z "$QUEUE_MANAGER" ] && [ -z "$ADMIN_URL" ] && [ -z "$USER" ] && [ -z "$PASS" ] && [ -z "$CUSTOM_API" ]; then
+    echo "!! Warning: No arguments provided."
+    echo ""
+    echo "Basic Usage (choose at least one):"
+    echo "  $0 -n iNode1              # Collect data for a specific integration node"
+    echo "  $0 -q QM1                 # Collect data for a specific queue manager"
+    echo ""
+    echo "API Verification (with or without authentication):"
+    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414"
+    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -u adminUser -p myStrongPass"
+    echo ""
+    echo "For IIB10 users (using custom API version):"
+    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -c apiv1"
+    exit 1
+fi
+
 # Create output directory with timestamp
 TS=$(date +"%Y%m%d_%H%M%S")
 OUT_DIR="ace_mustgather_$TS"
@@ -162,22 +179,6 @@ start_transcript
 
 # Check IBM ACE environment
 check_ace_environment
-
-# Display warning if no arguments provided
-if [ -z "$NODE_NAME" ] && [ -z "$QUEUE_MANAGER" ] && [ -z "$ADMIN_URL" ] && [ -z "$USER" ] && [ -z "$PASS" ] && [ -z "$CUSTOM_API" ]; then
-    log_message "!! Warning: No arguments provided."
-    log_message ""
-    log_message "Basic Usage (choose at least one):"
-    log_message "  $0 -n iNode1              # Collect data for a specific integration node"
-    log_message "  $0 -q QM1                 # Collect data for a specific queue manager"
-    log_message ""
-    log_message "API Verification (with or without authentication):"
-    log_message "  $0 -n iNode1 -q QM1 -a http://acehost:4414"
-    log_message "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -u adminUser -p myStrongPass"
-    log_message ""
-    log_message "For IIB10 users (using custom API version):"
-    log_message "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -c apiv1"
-fi
 
 # Function to execute a command and log its output
 exec_and_log() {
