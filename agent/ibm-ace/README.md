@@ -87,19 +87,19 @@ The IBM ACE Must Gather scripts collect diagnostic data from IBM App Connect Ent
    
       ```powershell
    # Examine only the specified integration node
-   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1
+   powershell -ExecutionPolicy Bypass -File instana-ace-mustgather.ps1 -NodeName iNode1
 
    # Examine only the specified queue manager
-   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -QueueManager QM1
+   powershell -ExecutionPolicy Bypass -File instana-ace-mustgather.ps1 -QueueManager QM1
 
    # Examine node and queue manager, and verify ACE credentials (without username/password)
-   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415
+   powershell -ExecutionPolicy Bypass -File instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415
 
    # Examine node and queue manager, and verify ACE credentials (with username/password)
-   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass
+   powershell -ExecutionPolicy Bypass -File instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass
    
    # Examine node and queue manager, and verify ACE credentials with username/password on a custom API (e.g., apiv1 for IIB10)
-   powershell -ExecutionPolicy Bypass -File .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass -CustomApi apiv1
+   powershell -ExecutionPolicy Bypass -File instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass -CustomApi apiv1
    ```
 ## Script Output
 

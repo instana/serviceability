@@ -17,12 +17,6 @@ param (
 #   .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass  # Examines only the specified node, queue manager and verifies the ace credentials with username and password
 #   .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -User adminUser -Pass myStrongPass -CustomApi apiv1  # Examines only the specified node, queue manager and verifies the ace credentials with username and password on custom api. For eg: apiv1(IIB10)
 
-$ts = Get-Date -Format 'yyyyMMdd_HHmmss'
-$outDir = "ace_mustgather_$ts"
-New-Item -ItemType Directory -Path $outDir | Out-Null
-$log = "$outDir\gather.log"
-Start-Transcript -Path $log
-
 function Show-Section {
     param([string]$Title)
     Write-Host "`n============================================================"
@@ -45,7 +39,14 @@ if (-not $NodeName -and -not $QueueManager -and -not $AdminURL -and -not $User -
     Write-Host ""
     Write-Host "For IIB10 users (using custom API version):"
     Write-Host "  .\instana-ace-mustgather.ps1 -NodeName iNode1 -QueueManager QM1 -AdminURL http://acewindows21:4415 -CustomApi apiv1"
+    exit 1
 }
+
+$ts = Get-Date -Format 'yyyyMMdd_HHmmss'
+$outDir = "ace_mustgather_$ts"
+New-Item -ItemType Directory -Path $outDir | Out-Null
+$log = "$outDir\gather.log"
+Start-Transcript -Path $log
 
 # 1. mqsilist summary + running integration server
 Show-Section "mqsilist Summary"
@@ -53,6 +54,37 @@ mqsilist
 
 Show-Section "Running Integration Servers on $NodeName"
 mqsilist $NodeName
+
+# Resource & flow stats
+Show-Section "Resource and Flow Stats"
+
+# Check if NodeName is provided
+if (-not $NodeName -and -not $QueueManager) {
+  Write-Host "Skipping resource and flow stats. Please provide NodeName parameter."
+  Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
+} elseif ($NodeName) {
+  # If NodeName is provided, collect stats for that specific node
+  Write-Host "Collecting resource and flow stats for specified node: $NodeName"
+  
+  # Get servers for this specific node directly
+  $servers = mqsilist $NodeName | Select-String "Integration server '(.+?)'"
+  
+  if ($servers) {
+    foreach ($s in $servers) {
+      $is = ($s -replace ".*Integration server '(.+?)'.*", '$1')
+      Write-Host "`n>>> Resource stats for Node [$NodeName] / Server [$is]"
+      mqsireportresourcestats $NodeName -e $is
+
+      Write-Host "`n>>> Flow stats for Node [$NodeName] / Server [$is]"
+      mqsireportflowstats $NodeName -s -e $is
+    }
+  } else {
+    Write-Host "!! No servers found for node: $NodeName"
+  }
+} else {
+  Write-Host "Skipping resource and flow stats. NodeName parameter is required for this section."
+  Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
+}
 
 # 2. whoami /groups filtered
 Show-Section "whoami /groups (mqm & mqbrkrs)"
@@ -117,37 +149,6 @@ Get-NetTCPConnection | ForEach-Object {
         }
     }
 } | Sort-Object ProcessName, LocalPort | Format-Table -AutoSize
-
-# 7. Resource & flow stats
-Show-Section "Resource and Flow Stats"
-
-# Check if NodeName is provided
-if (-not $NodeName -and -not $QueueManager) {
-  Write-Host "Skipping resource and flow stats. Please provide NodeName parameter."
-  Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
-} elseif ($NodeName) {
-  # If NodeName is provided, collect stats for that specific node
-  Write-Host "Collecting resource and flow stats for specified node: $NodeName"
-  
-  # Get servers for this specific node directly
-  $servers = mqsilist $NodeName | Select-String "Integration server '(.+?)'"
-  
-  if ($servers) {
-    foreach ($s in $servers) {
-      $is = ($s -replace ".*Integration server '(.+?)'.*", '$1')
-      Write-Host "`n>>> Resource stats for Node [$NodeName] / Server [$is]"
-      mqsireportresourcestats $NodeName -e $is
-
-      Write-Host "`n>>> Flow stats for Node [$NodeName] / Server [$is]"
-      mqsireportflowstats $NodeName -s -e $is
-    }
-  } else {
-    Write-Host "!! No servers found for node: $NodeName"
-  }
-} else {
-  Write-Host "Skipping resource and flow stats. NodeName parameter is required for this section."
-  Write-Host "Example: .\instana-ace-mustgather.ps1 -NodeName YourNodeName"
-}
 
 # 7. “Log on as service” policy
 Write-Host "`n-- 'Log on as a service' rights --"
