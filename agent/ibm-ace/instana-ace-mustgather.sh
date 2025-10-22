@@ -51,6 +51,23 @@ while getopts ":n:q:a:u:p:c:h" opt; do
     esac
 done
 
+# Check if no arguments were provided
+if [ $# -eq 0 ]; then
+    echo "!! Warning: No arguments provided."
+    echo ""
+    echo "Basic Usage (choose at least one):"
+    echo "  $0 -n iNode1              # Collect data for a specific integration node"
+    echo "  $0 -q QM1                 # Collect data for a specific queue manager"
+    echo ""
+    echo "API Verification (with or without authentication):"
+    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414"
+    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -u adminUser -p myStrongPass"
+    echo ""
+    echo "For IIB10 users (using custom API version):"
+    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -c apiv1"
+    exit 1
+fi
+
 # Create output directory with timestamp
 TS=$(date +"%Y%m%d_%H%M%S")
 OUT_DIR="ace_mustgather_$TS"
@@ -94,23 +111,6 @@ command_exists() {
 
 # Start transcript logging
 start_transcript
-
-# Display warning if no arguments provided
-if [ -z "$NODE_NAME" ] && [ -z "$QUEUE_MANAGER" ] && [ -z "$ADMIN_URL" ] && [ -z "$USER" ] && [ -z "$PASS" ] && [ -z "$CUSTOM_API" ]; then
-    echo "!! Warning: No arguments provided."
-    echo ""
-    echo "Basic Usage (choose at least one):"
-    echo "  $0 -n iNode1              # Collect data for a specific integration node"
-    echo "  $0 -q QM1                 # Collect data for a specific queue manager"
-    echo ""
-    echo "API Verification (with or without authentication):"
-    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414"
-    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -u adminUser -p myStrongPass"
-    echo ""
-    echo "For IIB10 users (using custom API version):"
-    echo "  $0 -n iNode1 -q QM1 -a http://acehost:4414 -c apiv1"
-fi
-
 # 1. mqsilist summary + running integration server
 show_section "mqsilist Summary"
 if command_exists mqsilist; then
@@ -124,6 +124,48 @@ if [ -n "$NODE_NAME" ] && command_exists mqsilist; then
     mqsilist "$NODE_NAME"
 else
     echo "Skipping integration server check. Either NODE_NAME not provided or mqsilist not available."
+fi
+
+# Resource & flow stats
+show_section "Resource and Flow Stats"
+
+# Check if NODE_NAME is provided
+if [ -z "$NODE_NAME" ] && [ -z "$QUEUE_MANAGER" ]; then
+    echo "Skipping resource and flow stats. Please provide NODE_NAME parameter."
+    echo "Example: $0 -n YourNodeName"
+elif [ -n "$NODE_NAME" ]; then
+    # If NODE_NAME is provided, collect stats for that specific node
+    echo "Collecting resource and flow stats for specified node: $NODE_NAME"
+    
+    # Get servers for this specific node directly
+    if command_exists mqsilist; then
+        servers=$(mqsilist "$NODE_NAME" | grep -E "Integration server '([^']+)'" | sed -E "s/.*Integration server '([^']+)'.*/\1/g")
+        
+        if [ -n "$servers" ]; then
+            echo "$servers" | while read -r is; do
+                echo -e "\n>>> Resource stats for Node [$NODE_NAME] / Server [$is]"
+                if command_exists mqsireportresourcestats; then
+                    mqsireportresourcestats "$NODE_NAME" -e "$is"
+                else
+                    echo "mqsireportresourcestats command not found"
+                fi
+
+                echo -e "\n>>> Flow stats for Node [$NODE_NAME] / Server [$is]"
+                if command_exists mqsireportflowstats; then
+                    mqsireportflowstats "$NODE_NAME" -s -e "$is"
+                else
+                    echo "mqsireportflowstats command not found"
+                fi
+            done
+        else
+            echo "!! No servers found for node: $NODE_NAME"
+        fi
+    else
+        echo "mqsilist command not found. Cannot retrieve server information."
+    fi
+else
+    echo "Skipping resource and flow stats. NODE_NAME parameter is required for this section."
+    echo "Example: $0 -n YourNodeName"
 fi
 
 # 2. Check group membership (equivalent to whoami /groups)
@@ -222,49 +264,6 @@ elif command_exists lsof; then
 else
     echo "No suitable command (ss, netstat, lsof) found to check TCP ports."
 fi
-
-# 7. Resource & flow stats
-show_section "Resource and Flow Stats"
-
-# Check if NODE_NAME is provided
-if [ -z "$NODE_NAME" ] && [ -z "$QUEUE_MANAGER" ]; then
-    echo "Skipping resource and flow stats. Please provide NODE_NAME parameter."
-    echo "Example: $0 -n YourNodeName"
-elif [ -n "$NODE_NAME" ]; then
-    # If NODE_NAME is provided, collect stats for that specific node
-    echo "Collecting resource and flow stats for specified node: $NODE_NAME"
-    
-    # Get servers for this specific node directly
-    if command_exists mqsilist; then
-        servers=$(mqsilist "$NODE_NAME" | grep -E "Integration server '([^']+)'" | sed -E "s/.*Integration server '([^']+)'.*/\1/g")
-        
-        if [ -n "$servers" ]; then
-            echo "$servers" | while read -r is; do
-                echo -e "\n>>> Resource stats for Node [$NODE_NAME] / Server [$is]"
-                if command_exists mqsireportresourcestats; then
-                    mqsireportresourcestats "$NODE_NAME" -e "$is"
-                else
-                    echo "mqsireportresourcestats command not found"
-                fi
-
-                echo -e "\n>>> Flow stats for Node [$NODE_NAME] / Server [$is]"
-                if command_exists mqsireportflowstats; then
-                    mqsireportflowstats "$NODE_NAME" -s -e "$is"
-                else
-                    echo "mqsireportflowstats command not found"
-                fi
-            done
-        else
-            echo "!! No servers found for node: $NODE_NAME"
-        fi
-    else
-        echo "mqsilist command not found. Cannot retrieve server information."
-    fi
-else
-    echo "Skipping resource and flow stats. NODE_NAME parameter is required for this section."
-    echo "Example: $0 -n YourNodeName"
-fi
-
 
 # 8. Integration Node overrides
 show_section "Integration Node Overrides"
@@ -478,5 +477,3 @@ echo "System information saved to: $OUT_DIR/system_info.txt"
 
 echo -e "\n== ACE Must-Gather Completed: $(date) =="
 echo -e "\nResults in: $OUT_DIR"
-
-# Made with Bob
