@@ -176,40 +176,43 @@ run_cmd "${CLI}" get pods -n "${INSTANA_AGENT_NAMESPACE}" -o name \
     | sed 's#^pod/##' \
     > "${MUSTGATHER_DIR}/instana-agent-pod-names.txt"
 
-# Copy logs from instana-agent pods, excluding those with 'k8sensor' in their name
+# Copy logs from instana-agent pods, excluding those with 'k8sensor', controller-manager and anything unidentifiable in their name
 while read -r POD_NAME; do
     case "${POD_NAME}" in
-        *k8sensor*)
+        instana-agent-k8sensor*)
             echo "Skipping k8sensor pod: ${POD_NAME}"
             continue
             ;;
-        *controller-manager*)
+        instana-agent-controller-manager*)
             echo "Skipping controller-manager pod: ${POD_NAME}"
             continue
             ;;
-        *NAME*)
-            echo "Skipping line containing: ${POD_NAME}"
+        instana-agent*)
+            DEST_DIR="${MUSTGATHER_DIR}/${INSTANA_AGENT_NAMESPACE}/${POD_NAME}"
+            mkdir -p "$(dirname "${DEST_DIR}")"
+
+            echo "Copying logs from pod '${POD_NAME}'..." >&2
+            # oc/kubectl cp <pod>:/path <localPath>
+            if ! run_cmd "${CLI}" -n "${INSTANA_AGENT_NAMESPACE}" cp \
+                "${POD_NAME}:/opt/instana/agent/data/log/" \
+                "${DEST_DIR}_logs"
+            then
+                echo "WARN: Could not copy logs for pod '${POD_NAME}'" >&2
+            fi
+
+            echo "Executing Agent Diagnostics collection on pod '${POD_NAME}'...">&2
+            run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar version > "${DEST_DIR}_diagnostics_version" < /dev/null
+            run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-ports > "${DEST_DIR}_diagnostics_check-ports" < /dev/null
+            run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-configuration > "${DEST_DIR}_diagnostics_check-configuration" < /dev/null
+            echo "Execution on pod '${POD_NAME} complete'...">&2
+            continue
+            ;;
+        *)
+            echo "Skipping non-instana-agent pod: ${POD_NAME}"
             continue
             ;;
     esac
 
-    DEST_DIR="${MUSTGATHER_DIR}/${INSTANA_AGENT_NAMESPACE}/${POD_NAME}"
-    mkdir -p "$(dirname "${DEST_DIR}")"
-
-    echo "Copying logs from pod '${POD_NAME}'..." >&2
-    # oc/kubectl cp <pod>:/path <localPath>
-    if ! run_cmd "${CLI}" -n "${INSTANA_AGENT_NAMESPACE}" cp \
-        "${POD_NAME}:/opt/instana/agent/data/log/" \
-        "${DEST_DIR}_logs"
-    then
-        echo "WARN: Could not copy logs for pod '${POD_NAME}'" >&2
-    fi
-
-    echo "Executing Agent Diagnostics collection on pod '${POD_NAME}'...">&2
-    run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar version > "${DEST_DIR}_diagnostics_version"
-    run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-ports > "${DEST_DIR}_diagnostics_check-ports"
-    run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-configuration > "${DEST_DIR}_diagnostics_check-configuration"
-    echo "Execution on pod '${POD_NAME} complete'...">&2
 
 done < "${MUSTGATHER_DIR}/instana-agent-pod-names.txt"
 
