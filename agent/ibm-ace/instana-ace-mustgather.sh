@@ -265,7 +265,7 @@ else
     echo "No suitable command (ss, netstat, lsof) found to check TCP ports."
 fi
 
-# 8. Integration Node overrides
+# 7. Integration Node overrides
 show_section "Integration Node Overrides"
 
 # Check if either NODE_NAME or QUEUE_MANAGER is provided
