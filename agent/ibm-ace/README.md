@@ -14,7 +14,21 @@ The IBM ACE Must Gather scripts collect diagnostic data from IBM App Connect Ent
    ```bash
    chmod +x instana-ace-mustgather.sh
    ```
-3. Run the script with appropriate parameters:
+3. Configure ACE and MQ commands before running the script:
+
+   ```bash
+   # For ACE:
+   cd <ace_folder>/server/bin
+   . ./mqsiprofile
+   # To verify ACE command:
+   mqsilist
+
+   # For IBM MQ command:
+   . /opt/mqm/bin/setmqenv -s
+   # To verify:
+   dspmq
+   ```
+4. Run the script with appropriate parameters:
 
    ```bash
    # Examine only the specified integration node
@@ -41,7 +55,21 @@ The IBM ACE Must Gather scripts collect diagnostic data from IBM App Connect Ent
    ```bash
    chmod +x instana-ace-mustgather-aix.sh
    ```
-3. Run the script with appropriate parameters:
+3. Configure ACE and MQ commands before running the script:
+
+   ```bash
+   # For ACE:
+   cd <ace_folder>/server/bin
+   . ./mqsiprofile
+   # To verify ACE command:
+   mqsilist
+
+   # For IBM MQ command:
+   . /opt/mqm/bin/setmqenv -s
+   # To verify:
+   dspmq
+   ```
+4. Run the script with appropriate parameters:
 
    ```bash
    # Examine only the specified integration node
