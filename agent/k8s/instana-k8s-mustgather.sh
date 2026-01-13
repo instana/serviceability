@@ -1,294 +1,364 @@
 #!/bin/sh
 ###############################################################################
 #
-# Copyright IBM Corp. 2024, 2025
+# Copyright IBM Corp. 2024, 2026
 #
-# This script collects data for the Instana Host Agent on Kubernetes / OpenShift
+# Instana Kubernetes Must-Gather Script
+# Collects diagnostic data for Instana agents using label-based discovery
 #
 # Usage:
-#   ./instana-k8s-mustgather.sh [-n NAMESPACE]
+#   ./instana-k8s-mustgather.sh [-t TAIL_LINES] [-d]
 #
 # Options:
-#   -n NAMESPACE  Specify the Instana agent namespace (default: instana-agent)
-#   -h            Display this help message
+#   -t TAIL_LINES  Number of log lines to collect (default: 10000)
+#   -d             Enable debug mode
+#   -h             Display help
 #
 ###############################################################################
 
-# command_exists checks if command is available for us or not
-command_exists() {
-    if type "$1" >/dev/null 2>&1; then
-        return 0
-    fi
-    return 1
-}
+set -eu
 
-# exit_with_missing_tool_error is a utility function to exit with missing tool
-exit_with_missing_tool_error() {
-    echo "ERROR: '$1' is not installed or not in PATH." >&2
-    exit 2
-}
+VERSION="2.0.0"
+LOG_TAIL_LINES=10000
+DEBUG_MODE=false
 
-# determine_cli checks what CLI-tools are available and default to the first one
-determine_cli() {
-    if command_exists "oc"; then
-        echo "oc"
-    elif command_exists "kubectl"; then
-        echo "kubectl"
-    else
-        exit_with_missing_tool_error "'oc' nor 'kubectl'"
-    fi
-}
+# Discovery labels (tried in order)
+DISCOVERY_LABELS="
+app.kubernetes.io/name=instana-agent
+app.kubernetes.io/component=instana-agent
+app.kubernetes.io/part-of=instana
+app.kubernetes.io/name=instana-agent-operator
+app=instana-agent
+"
 
+INSTANA_K8S_SENSOR="k8sensor"
+INSTANA_AGENT_OPERATOR="controller_manager"
+INSTANA_AGENT="agent"
 
-# determine_platform checks whether we're running on OpenShift or standard Kubernetes using CLI-tool such as 'oc' or 'kubectl'
-determine_platform() {
-    if $1 get clusterversion > /dev/null 2>&1 || \
-       $1 get crd routes.route.openshift.io > /dev/null 2>&1; then
-        echo "OpenShift"
-    else
-        echo "Kubernetes"
+# =============================================================================
+# Logging
+# =============================================================================
+
+log() { printf "[INFO] %b\n" "$*" >&2; }
+log_debug() { 
+    if [ "${DEBUG_MODE}" = true ]; then 
+        printf "[DEBUG] %b\n" "$*" >&2
     fi
 }
+log_warn() { printf "[WARN] %b\n" "$*" >&2; }
+log_error() { printf "[ERROR] %b\n" "$*" >&2; exit 1; }
 
-# run_cmd helper function to run commands, but log to stderr so it doesn't pollute stdout
-run_cmd() {
-    >&2 echo "Running: $*"   # Print debug info to stderr
-    "$@"                     # Run the command, leaving stdout clean for capturing
-}
+# =============================================================================
+# Utilities
+# =============================================================================
 
-# Display usage information
-show_usage() {
-    echo "Usage: $0 [-n NAMESPACE]"
-    echo ""
-    echo "Options:"
-    echo "  -n NAMESPACE  Specify the Instana agent namespace (default: instana-agent)"
-    echo "  -h            Display this help message"
-}
+command_exists() { command -v "$1" >/dev/null 2>&1; }
 
-# Parse command-line arguments
-while getopts "n:h" opt; do
-    case ${opt} in
-        n)
-            INSTANA_AGENT_NAMESPACE="${OPTARG}"
+identify_pod() {
+    pod_name="$1"
+    case "${pod_name}" in
+        *k8sensor*)
+            echo "${INSTANA_K8S_SENSOR}"
             ;;
-        h)
-            show_usage
-            exit 0
-            ;;
-        \?)
-            echo "Invalid option: -${OPTARG}" >&2
-            show_usage
-            exit 1
-            ;;
-    esac
-done
-shift $((OPTIND - 1))
-
-# Safer scripting:
-# -e  : exit on any command failing
-# -u  : treat unset variables as errors
-# -o pipefail : fail if any command in a pipeline fails (not supported by dash)
-SHELL_EXECUTABLE="/bin/sh"
-while IT=$(readlink "${SHELL_EXECUTABLE}"); do SHELL_EXECUTABLE="${IT}"; done
-if [ "${SHELL_EXECUTABLE##*/}" = 'dash' ]; then
-   set -eu
-else
-   set -euo pipefail
-fi
-
-VERSION="1.1.10"
-echo "Version: ${VERSION}" >&2
-
-###############################################################################
-# Configuration
-###############################################################################
-: "${INSTANA_AGENT_NAMESPACE:=instana-agent}"
-
-
-###############################################################################
-# Determine which tool to use (oc or kubectl)
-###############################################################################
-CLI=$(determine_cli)
-PLATFORM=$(determine_platform "$CLI")
-
-###############################################################################
-# Verify required utilities are available
-###############################################################################
-UTILITIES="awk sed tar"
-
-for UTILITY in ${UTILITIES}; do
-    if ! command_exists "$UTILITY"; then
-        exit_with_missing_tool_error "$UTILITY"
-    fi
-done
-
-###############################################################################
-# Make a dump directory once we've succeeded in all checks above
-###############################################################################
-CURRENT_TIME=$(date "+%Y%m%d-%H%M%S")
-MUSTGATHER_DIR="instana-agent-k8s-mustgather-${VERSION}-${CURRENT_TIME}"
-mkdir -p "${MUSTGATHER_DIR}"
-
-###############################################################################
-# Collect cluster-level info
-###############################################################################
-run_cmd "${CLI}" get nodes > "${MUSTGATHER_DIR}/node-list.txt"
-run_cmd "${CLI}" describe nodes > "${MUSTGATHER_DIR}/node-describe.txt"
-run_cmd "${CLI}" get namespaces > "${MUSTGATHER_DIR}/namespaces.txt"
-
-# If on OpenShift, gather clusteroperators
-if [ "${PLATFORM}" = "OpenShift" ]; then
-    run_cmd "${CLI}" get clusteroperators > "${MUSTGATHER_DIR}/cluster-operators.txt"
-fi
-
-###############################################################################
-# Gather the instana-agent-config secret data (if it exists)
-###############################################################################
-echo "Collecting Instana Agent configuration from secret..." >&2
-if "${CLI}" get secret instana-agent-config -n "${INSTANA_AGENT_NAMESPACE}" >/dev/null 2>&1; then
-    # Use jsonpath to extract .data
-    if ! run_cmd "${CLI}" get secret instana-agent-config -n "${INSTANA_AGENT_NAMESPACE}" \
-        -o jsonpath='{.data}' \
-        > "${MUSTGATHER_DIR}/instana-agent-config.json"
-    then
-        echo "WARN: Could not extract Instana Agent configuration from secret." >&2
-    fi
-else
-    echo "(HELM 1.x) Collecting Instana Agent configuration from configMap..." >&2
-    if "${CLI}" get cm instana-agent -n "${INSTANA_AGENT_NAMESPACE}" >/dev/null 2>&1; then
-        run_cmd "${CLI}" describe cm instana-agent -n "${INSTANA_AGENT_NAMESPACE}" \
-            > "${MUSTGATHER_DIR}/configMap.txt"
-    else
-        echo "WARN: No configMap named 'instana-agent' in 'instana-agent' namespace." \
-            >> "${MUSTGATHER_DIR}/configMap.txt"
-    fi
-fi
-
-###############################################################################
-# Collect pod info for the instana-agent namespace
-###############################################################################
-# 1) Wide output for reference
-run_cmd "${CLI}" get pods -n "${INSTANA_AGENT_NAMESPACE}" -o wide \
-    > "${MUSTGATHER_DIR}/instana-agent-pod-list.txt"
-
-# 2) Retrieve only the pod names using -o name, then strip the 'pod/' prefix
-run_cmd "${CLI}" get pods -n "${INSTANA_AGENT_NAMESPACE}" -o name \
-    | sed 's#^pod/##' \
-    > "${MUSTGATHER_DIR}/instana-agent-pod-names.txt"
-
-# Copy logs from instana-agent pods, excluding those with 'k8sensor', controller-manager and anything unidentifiable in their name
-while read -r POD_NAME; do
-    case "${POD_NAME}" in
-        instana-agent-k8sensor*)
-            echo "Skipping k8sensor pod: ${POD_NAME}"
-            continue
-            ;;
-        instana-agent-controller-manager*)
-            echo "Skipping controller-manager pod: ${POD_NAME}"
-            continue
+        *controller-manager*)
+            echo "${INSTANA_AGENT_OPERATOR}"
             ;;
         instana-agent*)
-            DEST_DIR="${MUSTGATHER_DIR}/${INSTANA_AGENT_NAMESPACE}/${POD_NAME}"
-            mkdir -p "$(dirname "${DEST_DIR}")"
-
-            echo "Copying logs from pod '${POD_NAME}'..." >&2
-            # oc/kubectl cp <pod>:/path <localPath>
-            if ! run_cmd "${CLI}" -n "${INSTANA_AGENT_NAMESPACE}" cp \
-                "${POD_NAME}:/opt/instana/agent/data/log/" \
-                "${DEST_DIR}_logs"
-            then
-                echo "WARN: Could not copy logs for pod '${POD_NAME}'" >&2
-            fi
-
-            echo "Executing Agent Diagnostics collection on pod '${POD_NAME}'...">&2
-            run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar version > "${DEST_DIR}_diagnostics_version" < /dev/null
-            run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-ports > "${DEST_DIR}_diagnostics_check-ports" < /dev/null
-            run_cmd "${CLI}" exec -i "$POD_NAME" -n "$INSTANA_AGENT_NAMESPACE" -- /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar check-configuration > "${DEST_DIR}_diagnostics_check-configuration" < /dev/null
-            echo "Execution on pod '${POD_NAME} complete'...">&2
-            continue
+            echo "${INSTANA_AGENT}"
             ;;
         *)
-            echo "Skipping non-instana-agent pod: ${POD_NAME}"
-            continue
+            log_warn "Unrecognized pod: ${pod_name}"
+            echo "unknown"
             ;;
     esac
-
-
-done < "${MUSTGATHER_DIR}/instana-agent-pod-names.txt"
-
-###############################################################################
-# If on OpenShift, gather pods in openshift-controller-manager namespace
-###############################################################################
-if [ "${PLATFORM}" = "OpenShift" ]; then
-    run_cmd "${CLI}" get pods -n openshift-controller-manager -o wide \
-        > "${MUSTGATHER_DIR}/openshift-controller-manager-pod-list.txt"
-fi
-
-###############################################################################
-# Function to gather data from a single namespace
-###############################################################################
-gather_namesace_data() {
-    ns="$1"
-    ns_dir="${MUSTGATHER_DIR}/${ns}"
-    mkdir -p "${ns_dir}"
-
-    # Collect all resources and events
-    run_cmd "${CLI}" get all,events -n "${ns}" -o wide \
-        > "${ns_dir}/all-list.txt" 2>&1
-
-    # Describe each pod in that namespace using -o name for real pod names
-    run_cmd "${CLI}" get pods -n "${ns}" -o name \
-        | sed 's#^pod/##' \
-        | awk -v cmd="${CLI}" -v ns="${ns}" -v outdir="${ns_dir}" '
-            {
-                pod=$1
-                # "describe pod" command
-                print cmd " -n " ns " describe pod " pod " > " outdir "/" pod "-describe.txt && echo described " pod
-            }
-        ' | sh
-
-    # Build container list using go-template
-    run_cmd "${CLI}" get pods -n "${ns}" \
-        -o go-template='{{range $i := .items}}{{range $c := $i.spec.containers}}{{println $i.metadata.name $c.name}}{{end}}{{end}}' \
-        > "${ns_dir}/container-list.txt"
-
-    # Gather current logs for each container
-    awk -v cmd="${CLI}" -v ns="${ns}" -v outdir="${ns_dir}" '
-    {
-        pod=$1
-        container=$2
-        log_file=outdir "/" pod "_" container ".log"
-        # Build the command to get logs and redirect
-        print cmd " -n " ns " logs " pod " -c " container " --tail=10000 > \"" log_file "\" && echo gathered logs of " pod "_" container
-    }
-    ' "${ns_dir}/container-list.txt" | sh
-
-    # Gather previous logs for each container (friendly message if none exist)
-    awk -v cmd="${CLI}" -v ns="${ns}" -v outdir="${ns_dir}" '
-    {
-        pod=$1
-        container=$2
-        prev_log_file=outdir "/" pod "_" container "_previous.log"
-        print cmd " -n " ns " logs " pod " -c " container " --tail=10000 -p > \"" prev_log_file "\" 2>&1 && echo gathered previous logs of " pod "_" container " || echo No previous logs available for " pod "_" container
-    }
-    ' "${ns_dir}/container-list.txt" | sh || true
 }
 
-###############################################################################
-# Gather data from each namespace in NAMESPACES
-###############################################################################
-NAMESPACES=$INSTANA_AGENT_NAMESPACE
+make_directories() {
+    for dir in "$@"; do
+        log "Creating directory at ${dir}..."
+        if [ ! -d "${dir}" ]; then
+            mkdir -p "${dir}"
+        fi
+    done
+}
 
-if [ "$PLATFORM" = "OpenShift" ]; then
-    NAMESPACES="${NAMESPACES} openshift-controller-manager"
-fi
+# =============================================================================
+# CLI and Platform Detection
+# =============================================================================
 
-for namespace in ${NAMESPACES}; do
-    gather_namesace_data "${namespace}"
-done
+detect_cli_and_platform() {
+    has_oc=false
+    has_kubectl=false
+    
+    command_exists oc && has_oc=true
+    command_exists kubectl && has_kubectl=true
+    
+    if [ "${has_oc}" = false ] && [ "${has_kubectl}" = false ]; then
+        log_error "Neither 'oc' nor 'kubectl' detected"
+    fi
+    
+    # Use kubectl for platform detection (more universal)
+    test_cli="kubectl"
+    [ "${has_kubectl}" = false ] && test_cli="oc"
+    
+    # Detect platform
+    if ${test_cli} get clusterversion >/dev/null 2>&1 || \
+       ${test_cli} get crd routes.route.openshift.io >/dev/null 2>&1; then
+        PLATFORM="OpenShift"
+        CLI="${has_oc:+oc}"
+        CLI="${CLI:-kubectl}"
+        log "Detected OpenShift platform, using CLI: ${CLI}"
+    else
+        PLATFORM="Kubernetes"
+        CLI="${has_kubectl:+kubectl}"
+        CLI="${CLI:-oc}"
+        log "Detected Kubernetes platform, using CLI: ${CLI}"
+    fi
+}
 
-###############################################################################
-# Create a compressed tarball of the must-gather directory
-###############################################################################
-run_cmd tar czf "${MUSTGATHER_DIR}.tgz" "${MUSTGATHER_DIR}"
->&2 echo "Must-gather completed. Archive created: ${MUSTGATHER_DIR}.tgz"
+# =============================================================================
+# Discovery
+# =============================================================================
+
+discover_instana_pods() {
+    log "Discovering Instana related pods and containers cluster-wide..."
+    
+    all_pod_containers=""
+    found_any=false
+    
+    for label in ${DISCOVERY_LABELS}; do
+        log "Searching with label: ${label}"
+        
+        # Discover pods with their containers in one query
+        discoveries=$(${CLI} get pods --all-namespaces \
+            -l "${label}" \
+            -o go-template='{{range .items}}{{$ns:=.metadata.namespace}}{{$pod:=.metadata.name}}{{range .spec.containers}}{{println $ns $pod .name}}{{end}}{{end}}' \
+            --no-headers 2>/dev/null || true)
+        
+        if [ -n "${discoveries}" ]; then
+            COUNT=$(echo "${discoveries}" | wc -l | tr -d ' ')
+            log "Found ${COUNT} containers using label: ${label}"
+            
+            # Accumulate all discovered pod-container combinations
+            if [ -z "${all_pod_containers}" ]; then
+                all_pod_containers="${discoveries}"
+            else
+                all_pod_containers="${all_pod_containers}
+${discoveries}"
+            fi
+            found_any=true
+        fi
+    done
+    
+    if [ "${found_any}" = false ]; then
+        log_warn "No Instana pods discovered via labels"
+        return 1
+    fi
+    
+    # Deduplicate and save results
+    discovered_containers=$(echo "${all_pod_containers}" | sort -u)
+    container_count=$(echo "${discovered_containers}" | wc -l | tr -d ' ')
+    
+    # Extract unique pods and namespaces
+    discovered_pods=$(echo "${discovered_containers}" | awk '{print $1, $2}' | sort -u)
+    pod_count=$(echo "${discovered_pods}" | wc -l | tr -d ' ')
+    discovered_namespaces=$(echo "${discovered_pods}" | awk '{print $1}' | sort -u)
+    namespace_count=$(echo "${discovered_namespaces}" | wc -l | tr -d ' ')
+    
+    log "Total: ${pod_count} unique pods with ${container_count} containers in ${namespace_count} namespace(s)"
+    
+    # Save all three formats for different use cases
+    echo "${discovered_containers}" > "${TMP_DIR}/discovered-pods-containers.txt"
+    echo "${discovered_namespaces}" > "${TMP_DIR}/discovered-namespaces.txt"
+    
+    return 0
+}
+
+# =============================================================================
+# Data Collection
+# =============================================================================
+
+collect_cluster_info() {
+    log "Collecting cluster info..."
+    ${CLI} get nodes > "${MUSTGATHER_DIR}/cluster-info_nodes.txt"
+    ${CLI} describe nodes > "${MUSTGATHER_DIR}/cluster-info_nodes-describe.txt"
+    ${CLI} get namespaces > "${MUSTGATHER_DIR}/cluster-info_namespaces.txt"
+    
+    if [ "${PLATFORM}" = "OpenShift" ]; then
+        ${CLI} get clusteroperators > "${MUSTGATHER_DIR}/cluster-info_openshift_clusteroperators.txt" 2>&1 || true
+    fi
+}
+
+collect_agent_config() {
+    log "Collecting agent configuration..."
+    
+    while IFS= read -r ns; do
+        ns_dir="${MUSTGATHER_DIR}/namespaces/${ns}"
+        make_directories "${ns_dir}"
+
+        if ${CLI} get secret instana-agent-config -n "${ns}" >/dev/null 2>&1; then
+            ${CLI} get secret instana-agent-config -n "${ns}" -o jsonpath='{.data}' \
+                > "${ns_dir}/agent-config.json" 2>&1 || true
+        fi
+        
+        # Instana agent ConfigMap on Helm 1.x
+        if ${CLI} get cm instana-agent -n "${ns}" >/dev/null 2>&1; then
+            ${CLI} describe cm instana-agent -n "${ns}" \
+                > "${ns_dir}/agent-configmap.txt" 2>&1 || true
+        fi
+    done < "${TMP_DIR}/discovered-namespaces.txt"
+}
+
+collect_namespace_data() {
+    ns="$1"
+    ns_dir="${MUSTGATHER_DIR}/namespaces/${ns}"
+    make_directories "${ns_dir}"
+    file_path="${ns_dir}/resources-and-events.txt"
+    
+    log "Collecting ${ns}-namespace resources and events to ${file_path}"
+    
+    # Resources and events
+    ${CLI} get all,events -n "${ns}" -o wide > "${file_path}" 2>&1 || true
+}
+
+collect_pod_data() {
+    log "Collecting pod data..."
+    
+    processed=0
+    skipped=0
+    
+    while IFS= read -r line; do
+        [ -z "${line}" ] && continue
+        
+        ns=$(echo "${line}" | awk '{print $1}')
+        pod=$(echo "${line}" | awk '{print $2}')
+        container=$(echo "${line}" | awk '{print $3}')
+        
+        pod_type=$(identify_pod "${pod}")
+        log "Processing ${pod_type} pod: ${ns}/${pod}"
+
+        processed=$((processed + 1))
+        dump_dir="${MUSTGATHER_DIR}/namespaces/${ns}/pods/${pod}/containers/${container}"
+
+        # Agent specific collection
+        if [ "$pod_type" = "$INSTANA_AGENT" ]; then
+            make_directories "${dump_dir}/agent-logs" "${dump_dir}/diagnostics-tool"
+
+            # Copy agent logs
+            ${CLI} -n "${ns}" cp "${pod}:/opt/instana/agent/data/log/" "${dump_dir}/agent-logs" 2>&1 || \
+                log_warn "Failed to copy logs from ${pod}"
+            
+            # Run diagnostics
+            for command in version check-ports check-configuration; do
+                log_debug "Running diagnostic: ${command} on ${pod}"
+                ${CLI} exec -i "${pod}" -n "${ns}" -- \
+                    /opt/instana/agent/jvm/bin/java -jar /opt/instana/agent/bin/agent-diagnostic.jar "${command}" \
+                    > "${dump_dir}/diagnostics-tool/${command}.log" 2>&1 </dev/null || \
+                    log_warn "Diagnostic ${command} failed for ${pod}"
+            done
+        fi
+        
+        # General kubectl commands
+        make_directories "${dump_dir}/kubectl"
+        ${CLI} logs "${pod}" -c "${container}" -n "${ns}" --tail="${LOG_TAIL_LINES}" \
+            > "${dump_dir}/kubectl/log.log" 2>&1 || true
+        
+        ${CLI} logs "${pod}" -c "${container}" -n "${ns}" --tail="${LOG_TAIL_LINES}" -p \
+            > "${dump_dir}/kubectl/log_previous.log" 2>&1 || true
+
+        ${CLI} describe pod "${pod}" -n "${ns}" \
+            > "${dump_dir}/kubectl/describe.txt" 2>&1 || true
+
+    done < "${TMP_DIR}/discovered-pods-containers.txt"
+    
+    log "Pod data collected (processed: ${processed}, skipped: ${skipped})"
+}
+
+
+
+show_usage() {
+    cat << EOF
+Usage: $0 [-t TAIL_LINES] [-d] [-h]
+
+Collects Instana agent diagnostics using label-based discovery.
+
+Options:
+  -t TAIL_LINES  Log lines to collect (default: 10000)
+  -d             Debug mode
+  -h             Show help
+
+Version: ${VERSION}
+EOF
+}
+
+parse_args() {
+    while getopts "t:n:dh" opt; do
+        case ${opt} in
+            t) LOG_TAIL_LINES="${OPTARG}" ;;
+            d) DEBUG_MODE=true ;;
+            n) log_warn "Ignoring -n flag as it is no longer supported." ;;
+            h) show_usage; exit 0 ;;
+            *) show_usage; exit 1 ;;
+        esac
+    done
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+
+main() {
+    parse_args "$@"
+    
+    log "Instana K8s Must-Gather v${VERSION}"
+    
+    # Validate
+    for util in awk sed tar date sort wc tr; do
+        command_exists "${util}" || log_error "Missing utility in your local commandline: ${util}"
+    done
+    
+    # Setup
+    detect_cli_and_platform
+    
+    current_time=$(date "+%Y%m%d-%H%M%S")
+    MUSTGATHER_DIR="instana-k8s-mustgather-${VERSION}-${current_time}"
+    TMP_DIR="tmp"
+    make_directories "${MUSTGATHER_DIR}" "${TMP_DIR}"
+    
+    # Discover
+    if ! discover_instana_pods; then
+        log_error "No Instana pods found. Ensure agents are deployed and labeled correctly."
+    fi
+    
+    # Collect
+    collect_cluster_info
+    collect_agent_config
+    
+    while IFS= read -r ns; do
+        collect_namespace_data "${ns}"
+    done < "${TMP_DIR}/discovered-namespaces.txt"
+    
+    collect_pod_data
+    
+    # OpenShift extras
+    if [ "${PLATFORM}" = "OpenShift" ]; then
+        collect_namespace_data "openshift-controller-manager"
+    fi
+    
+    # Create an archive tgz file from the directory
+    log "Creating archive..."
+    tar czf "${MUSTGATHER_DIR}.tgz" "${MUSTGATHER_DIR}"
+    
+    log "Archived at: ${MUSTGATHER_DIR}.tgz"
+
+    # Cleanup all temporary files and directories needed to make the archive if not in debug mode
+    if [ "${DEBUG_MODE}" = false ]; then 
+        log "Removing temporary directories: \n ./${TMP_DIR} \n ./${MUSTGATHER_DIR}"
+        rm -rf "./${TMP_DIR}"
+        rm -rf "./${MUSTGATHER_DIR}"
+    fi
+
+    log "Complete"
+}
+
+main "$@"

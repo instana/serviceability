@@ -1,142 +1,151 @@
 # Instana Kubernetes Must-Gather Script
 
-## Table of Contents
+A diagnostic data collection tool for Instana agents running on Kubernetes and OpenShift.
 
-- [Instana Kubernetes Must-Gather Script](#instana-kubernetes-must-gather-script)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-    - [Key Features](#key-features)
-  - [Prerequisites](#prerequisites)
-  - [Usage](#usage)
-    - [Configuration](#configuration)
-    - [Command-Line Arguments](#command-line-arguments)
-    - [Expected Output](#expected-output)
-  - [Examples](#examples)
-  - [Additional Notes](#additional-notes)
-  - [Change Log](#change-log)
+**Version:** 2.0.0
 
 ## Overview
 
-The `instana-k8s-mustgather.sh` script is designed to collect diagnostic data for the Instana Host Agent running on Kubernetes or OpenShift clusters. It simplifies troubleshooting by gathering logs, configuration details, and cluster information—packaging everything into a compressed tarball for easy sharing with support teams or for archival.
+The `instana-k8s-mustgather.sh` script automatically collects diagnostic information from Instana agent deployments. It uses **label-based discovery** to find all Instana-related pods across your entire cluster.
 
-### Key Features
+### How It Works
 
-- **Automatic command detection**: Determines whether to use `oc` (OpenShift) or `kubectl` (vanilla Kubernetes).
-- **Comprehensive data collection**: Gathers node listings, namespace information, Instana Agent secrets/configMaps, pod descriptions, and container logs (including previous logs if available).
-- **Built-in checks**: Verifies required tools (e.g., `awk`, `sed`) and ensures critical resources exist before proceeding.
-- **Tarball creation**: Finalizes all collected data into a single archive (`.tgz`) for easy distribution.
+The script searches for pods using these Kubernetes labels:
 
-## Prerequisites
+- `app.kubernetes.io/name=instana-agent`
+- `app.kubernetes.io/component=instana-agent`
+- `app.kubernetes.io/part-of=instana`
+- `app.kubernetes.io/name=instana-agent-operator`
+- `app=instana-agent`
 
-1. **Cluster command-line tool**  
-   - **OpenShift**: `oc`
-   - **Kubernetes**: `kubectl`
-   (Must be installed and authenticated for your cluster)
-2. **Additional utilities**  
-   - `awk`
-   - `sed`
-   - `tar`
-   - A shell that supports `set -euo pipefail` (modern Bash or similar).
-3. **Sufficient permissions**  
-   - Ensure you have the necessary permissions to read namespaces, pods, secrets, and copy logs from pods in your cluster.
+It automatically discovers Instana agent related pods **across all namespaces** and collects their diagnostic data.
 
-No additional system configurations are required beyond the standard tools listed above.
+## Requirements
+
+**Tools:**
+
+- `kubectl` or `oc` (OpenShift CLI)
+- `awk`, `sed`, `tar`, `date`
+
+**Permissions:**
+
+- Read access to pods, secrets, and configmaps across all namespaces
+- Execute commands in pods
+- Copy files from pods
+
+## Quick Start
+
+> Make sure that `kubectl` or `oc` is configured to access your cluster.
+
+```bash
+# Download
+curl -O https://raw.githubusercontent.com/instana/serviceability/main/agent/k8s/instana-k8s-mustgather.sh
+
+# Make executable
+chmod +x instana-k8s-mustgather.sh
+
+# Run
+./instana-k8s-mustgather.sh
+```
 
 ## Usage
 
-1. **Clone or copy the script** into an environment where the above prerequisites are met.
-2. **Make the script executable** (if needed):
+### Basic Usage
 
-   ```bash
-   chmod +x instana-k8s-mustgather.sh
-   ```
-
-3. **Run the script**:
-
-   ```bash
-   ./instana-k8s-mustgather.sh
-   ```
-
-   The script:
-   - Detects whether you are on OpenShift (`oc`) or Kubernetes (`kubectl`).
-   - Gathers cluster information, Instana Agent configurations, and logs.
-   - Creates a directory named `instana-agent-k8s-mustgather-<version>-<timestamp>` containing all artifacts.
-   - Compresses the directory into an archive named `instana-agent-k8s-mustgather-<version>-<timestamp>.tgz`.
-
-### Configuration
-
-- **Environment Variable: `INSTANA_AGENT_NAMESPACE`**  
-  By default, the script gathers data from the `instana-agent` namespace. To change this behavior, set the `INSTANA_AGENT_NAMESPACE` variable before running the script:
-
-  ```bash
-  export INSTANA_AGENT_NAMESPACE=custom-agent-namespace
-  ./instana-k8s-mustgather.sh
-  ```
-
-### Command-Line Arguments
-
-The script accepts the following command-line arguments:
-
-- `-n NAMESPACE`: Specify the Instana agent namespace (default: instana-agent)
-- `-h`: Display help message
-
-Example:
 ```bash
-./instana-k8s-mustgather.sh -n custom-agent-namespace
+./instana-k8s-mustgather.sh
+```
 
-### Expected Output
+Discovers all Instana agent related pods and collects 10,000 log lines per container.
 
-- A new directory, for example:
+### Debug Mode
 
-  ```
-  instana-agent-k8s-mustgather-1.1.6-20250324-123056/
-  ```
+```bash
+./instana-k8s-mustgather.sh -d
+```
 
-  containing:
-  - `node-list.txt`, `node-describe.txt`, `namespaces.txt` (and if OpenShift, `cluster-operators.txt`).
-  - Instana Agent secret or configMap details.
-  - Detailed pod and container information, as well as logs for the specified `INSTANA_AGENT_NAMESPACE` (defaulting to `instana-agent`), plus `openshift-controller-manager` if on OpenShift.
-- A compressed tarball (`.tgz`) of that directory for sharing or storage.
+Shows detailed output including discovery process and commands executed. Skips cleanup of temporary directories used to create the must gather archive.
 
-## Examples
+### Limit Log Lines
 
-1. **Basic run**  
+```bash
+./instana-k8s-mustgather.sh -t 5000
+```
 
-   ```bash
-   # Ensure you are logged in to your cluster
-   oc login <cluster_url>          # for OpenShift
-   # or
-   kubectl config use-context ...  # for Kubernetes
+Collects only 5,000 log lines per container (useful for large deployments).
 
-   ./instana-k8s-mustgather.sh
-   # Output:
-   #   Version: 1.1.6
-   #   Running: <various cluster commands>
-   #   Must-gather completed. Archive created: instana-agent-k8s-mustgather-1.1.6-20250324-123056.tgz
-   ```
+### Combined Options
 
-2. **Check logs**  
-   After the script completes, explore the generated directory to review the captured logs and configurations. For example:
+```bash
+./instana-k8s-mustgather.sh -t 20000 -d
+```
 
-   ```bash
-   tar xzf instana-agent-k8s-mustgather-1.1.6-20250324-123056.tgz
-   ls instana-agent-k8s-mustgather-1.1.6-20250324-123056/instana-agent/
-   ```
+### Command-Line Options
 
-## Additional Notes
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-t LINES` | Number of log lines to collect | 10000 |
+| `-d` | Enable debug mode | off |
+| `-h` | Show help | - |
 
-- **Limitations**:
-  - The script is designed primarily for Instana Agent troubleshooting. It does not collect logs or resources from other namespaces unless specified (via `INSTANA_AGENT_NAMESPACE`, plus `openshift-controller-manager` if on OpenShift).
-  - Older shells that do not support `pipefail` may have issues.
-- **Future enhancements**:
-  - Support for additional namespaces or custom filtering of logs.
-  - Extended compatibility across different shell environments.
-- **Contact**:
-  - For support or further information, refer to [Instana documentation](https://www.ibm.com/docs/en/instana-observability). If you need more assistance, contact your Instana support representative.
+## Output
 
-## Change Log
+The script creates a timestamped archive:
 
-- **1.1.6**:
-  - Added support for the `INSTANA_AGENT_NAMESPACE` environment variable to customize the default namespace.
-  - Updated the naming pattern of the output directory to include the version.
-  - Other minor improvements and bug fixes.
+```text
+instana-k8s-mustgather-VERSION-TIMESTAMP.tgz
+```
+
+### Directory Structure
+
+```text
+instana-k8s-mustgather-VERSION-TIMESTAMP/
+├── cluster-info_nodes.txt
+├── cluster-info_nodes-describe.txt
+├── cluster-info_namespaces.txt
+├── cluster-info_openshift_clusteroperators.txt (OpenShift only)
+├── agent-config-<namespace>.json
+└── namespaces/
+    └── openshift-controller-manager/ (Openshift only)
+        ├── resources-and-events.txt
+    └── <namespace>/
+        ├── resources-and-events.txt
+        └── pods/
+            └── <pod-name>/
+                └── containers/
+                    └── <container-name>/
+                        ├── kubectl/
+                        │   ├── log.log
+                        │   ├── log_previous.log
+                        │   └── describe.txt
+                        ├── agent-logs/          (agent pods only)
+                        │   └── agent.log*
+                        └── diagnostics-tool/    (agent pods only)
+                            ├── version.log
+                            ├── check-ports.log
+                            └── check-configuration.log
+```
+
+## What Data is Collected
+
+### Cluster Information
+
+- Node list and descriptions
+- All namespaces
+- Cluster operators (OpenShift only)
+
+### Agent Configuration
+
+- Agent secrets and configmaps from all discovered namespaces
+
+### Namespace Resources
+
+- All resources and events in namespaces containing Instana components
+
+### Pod Data
+
+- Pod descriptions
+- Container logs (current and previous)
+- For agent pods specifically:
+  - Complete log directory from pod filesystem
+  - Agent diagnostics (version, port checks, configuration validation)
