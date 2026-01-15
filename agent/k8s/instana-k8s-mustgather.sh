@@ -57,10 +57,10 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 identify_pod() {
     pod_name="$1"
     case "${pod_name}" in
-        *k8sensor*)
+        instana-agent-k8sensor*)
             echo "${INSTANA_K8S_SENSOR}"
             ;;
-        *controller-manager*)
+        instana-agent-controller-manager*)
             echo "${INSTANA_AGENT_OPERATOR}"
             ;;
         instana-agent*)
