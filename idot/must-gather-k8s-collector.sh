@@ -2,7 +2,7 @@
 
 # Kubernetes OpenTelemetry Collector Must-Gather Script
 # Collects diagnostic information from OTel Collector deployed via Helm
-# Usage: ./k8s-must-gather.sh [namespace] [release-name]
+# Usage: ./must-gather-k8s-collector.sh [namespace] [release-name]
 
 set -e
 
