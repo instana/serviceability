@@ -2,7 +2,7 @@
 
 # OpenTelemetry Collector Must-Gather Script
 # Collects system information, configuration and logs
-# Usage: ./must-gather.sh [output_directory]
+# Usage: ./must-gather-host-collector.sh [output_directory]
 
 set -e
 
