@@ -1,17 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 
 # OpenTelemetry Collector Must-Gather Script
 # Collects system information, configuration and logs
 # Usage: ./must-gather-host-collector.sh [output_directory]
 
 set -e
-
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Default paths
 DEFAULT_COLLECTOR_DIR="/opt/instana/collector"
@@ -25,30 +18,57 @@ OUTPUT_DIR="${1:-host-otel-must-gather-${TIMESTAMP}}"
 
 # Banner
 print_banner() {
-    echo -e "${BLUE}================================================${NC}"
-    echo -e "${BLUE}  OpenTelemetry Collector Must-Gather Tool${NC}"
-    echo -e "${BLUE}================================================${NC}"
+    echo "================================================"
+    echo "  OpenTelemetry Collector Must-Gather Tool"
+    echo "================================================"
     echo ""
 }
 
 # Print section header
 print_section() {
-    echo -e "\n${YELLOW}>>> $1${NC}"
+    echo ""
+    echo ">>> $1"
 }
 
 # Print success message
 print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
+    echo "[SUCCESS] $1"
 }
 
 # Print error message
 print_error() {
-    echo -e "${RED}✗ $1${NC}"
+    echo "[ERROR] $1" >&2
 }
 
 # Print info message
 print_info() {
-    echo -e "${BLUE}ℹ $1${NC}"
+    echo "[INFO] $1"
+}
+
+# Check required tools
+check_dependencies() {
+    print_section "Checking dependencies"
+    
+    missing_tools=""
+    
+    # Check for required commands
+    for cmd in tar date find du uname hostname df wc cut; do
+        if ! command -v "$cmd" > /dev/null 2>&1; then
+            if [ -n "$missing_tools" ]; then
+                missing_tools="$missing_tools $cmd"
+            else
+                missing_tools="$cmd"
+            fi
+        fi
+    done
+    
+    if [ -n "$missing_tools" ]; then
+        print_error "Missing required tools: $missing_tools"
+        echo "Please install the missing tools and try again."
+        exit 1
+    fi
+    
+    print_success "All required tools are available"
 }
 
 # Create output directory structure
@@ -215,6 +235,9 @@ main() {
     
     print_info "Starting must-gather collection..."
     echo ""
+    
+    # Check dependencies
+    check_dependencies
     
     # Setup
     setup_output_directory
