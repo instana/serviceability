@@ -24,11 +24,15 @@ DEBUG_MODE=false
 
 # Discovery labels (tried in order)
 DISCOVERY_LABELS="
-app.kubernetes.io/name=instana-agent
-app.kubernetes.io/component=instana-agent
-app.kubernetes.io/part-of=instana
-app.kubernetes.io/name=instana-agent-operator
 app=instana-agent
+app=k8sensor
+app.kubernetes.io/name=instana-agent
+app.kubernetes.io/name=instana-agent-operator
+app.kubernetes.io/name=instana-agent-k8s-sensor
+app.kubernetes.io/component=instana-agent
+app.kubernetes.io/instance=instana-agent
+app.kubernetes.io/part-of=instana
+app.kubernetes.io/managed-by=instana-agent-operator
 "
 
 INSTANA_K8S_SENSOR="k8sensor"
@@ -57,10 +61,10 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 identify_pod() {
     pod_name="$1"
     case "${pod_name}" in
-        instana-agent-k8sensor*)
+        *k8sensor*)
             echo "${INSTANA_K8S_SENSOR}"
             ;;
-        instana-agent-controller-manager*)
+        *controller-manager*)
             echo "${INSTANA_AGENT_OPERATOR}"
             ;;
         instana-agent*)
@@ -129,6 +133,7 @@ discover_instana_pods() {
     for label in ${DISCOVERY_LABELS}; do
         log "Searching with label: ${label}"
         
+        # shellcheck disable=SC2016
         # Discover pods with their containers in one query
         discoveries=$(${CLI} get pods --all-namespaces \
             -l "${label}" \
