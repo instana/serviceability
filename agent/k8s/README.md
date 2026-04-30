@@ -106,8 +106,13 @@ instana-k8s-mustgather-VERSION-TIMESTAMP/
 ├── cluster-info_openshift_clusteroperators.txt (OpenShift only)
 ├── agent-config-<namespace>.json
 └── namespaces/
-    └── openshift-controller-manager/ (Openshift only)
-        ├── resources-and-events.txt
+    ├── openshift-controller-manager/ (Openshift only)
+    │   └── resources-and-events.txt
+    ├── kube-system/ (non-Openshift only)
+    │   └── svcs/
+    │       └── <service-name>/
+    │           ├── describe.txt
+    │           └── object-spec.yaml
     └── <namespace>/
         ├── resources-and-events.txt
         └── pods/

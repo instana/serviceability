@@ -282,8 +282,7 @@ collect_pod_data() {
 collect_etcd_metric_service() {
     log "Collecting etcd metric service definition from kube-system namespace"
 
-    etcd_dir="${MUSTGATHER_DIR}/kube-system/etcd-services"
-    make_directories "${etcd_dir}"
+    etcd_metrics_service_dir="${MUSTGATHER_DIR}/namespaces/kube-system/svcs"
 
     # Collect services with component=etcd label
     log_debug "Searching for services with label component=etcd"
@@ -312,18 +311,22 @@ collect_etcd_metric_service() {
         svc=$(echo "${svc_name}" | sed 's|^service/||')
         log_debug "Collecting definition for service: ${svc}"
 
+        # Make directory with service name
+        service_dir="${etcd_metrics_service_dir}/${svc}"
+        make_directories "${service_dir}"
+
         # Get service definition in YAML format
         ${CLI} get svc "${svc}" -n kube-system -o yaml \
-            >"${etcd_dir}/${svc}.yaml" 2>&1 ||
+            >"${service_dir}/object-spec.yaml" 2>&1 ||
             log_warn "Failed to collect definition for service ${svc}"
 
         # Get service description
         ${CLI} describe svc "${svc}" -n kube-system \
-            >"${etcd_dir}/${svc}-describe.txt" 2>&1 ||
+            >"${service_dir}/describe.txt" 2>&1 ||
             log_warn "Failed to describe service ${svc}"
     done
 
-    log "etcd service definitions collected in ${etcd_dir}"
+    log "etcd service definitions collected in ${etcd_metrics_service_dir}"
 }
 
 show_usage() {
