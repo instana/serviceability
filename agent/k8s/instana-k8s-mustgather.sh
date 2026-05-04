@@ -252,7 +252,7 @@ collect_pod_data() {
             # Copy agent logs
             ${CLI} -n "${ns}" cp "${pod}:/opt/instana/agent/data/log/" "${dump_dir}/agent-logs" 2>&1 || \
                 log_warn "Failed to copy logs from ${pod}"
-            
+
             # Run diagnostics
             for command in version check-ports check-configuration; do
                 log_debug "Running diagnostic: ${command} on ${pod}"
@@ -279,7 +279,55 @@ collect_pod_data() {
     log "Pod data collected (processed: ${processed}, skipped: ${skipped})"
 }
 
+collect_etcd_metric_service() {
+    log "Collecting etcd metric service definition from kube-system namespace"
 
+    etcd_metrics_service_dir="${MUSTGATHER_DIR}/namespaces/kube-system/svcs"
+
+    # Collect services with component=etcd label
+    log_debug "Searching for services with label component=etcd"
+    etcd_services=$(${CLI} get svc -n kube-system -l component=etcd -o name 2>/dev/null || true)
+
+    # Collect services named etcd or etcd-metrics
+    log_debug "Searching for services named etcd or etcd-metrics"
+    named_services=$(${CLI} get svc -n kube-system -o name 2>/dev/null | grep -E "/(etcd|etcd-metrics)$" || true)
+
+    # Combine and deduplicate
+    all_etcd_services=$(printf "%s\n%s" "${etcd_services}" "${named_services}" | grep -v "^$" | sort -u || true)
+
+    if [ -z "${all_etcd_services}" ]; then
+        log_warn "No etcd services found in kube-system namespace"
+        return 0
+    fi
+
+    service_count=$(echo "${all_etcd_services}" | wc -l | tr -d ' ')
+    log "Found ${service_count} etcd-related service(s) in kube-system"
+
+    # Collect resource definitions for each service
+    echo "${all_etcd_services}" | while IFS= read -r svc_name; do
+        [ -z "${svc_name}" ] && continue
+
+        # Extract service name without 'service/' prefix
+        svc=$(echo "${svc_name}" | sed 's|^service/||')
+        log_debug "Collecting definition for service: ${svc}"
+
+        # Make directory with service name
+        service_dir="${etcd_metrics_service_dir}/${svc}"
+        make_directories "${service_dir}"
+
+        # Get service definition in YAML format
+        ${CLI} get svc "${svc}" -n kube-system -o yaml \
+            >"${service_dir}/object-spec.yaml" 2>&1 ||
+            log_warn "Failed to collect definition for service ${svc}"
+
+        # Get service description
+        ${CLI} describe svc "${svc}" -n kube-system \
+            >"${service_dir}/describe.txt" 2>&1 ||
+            log_warn "Failed to describe service ${svc}"
+    done
+
+    log "etcd service definitions collected in ${etcd_metrics_service_dir}"
+}
 
 show_usage() {
     cat << EOF
@@ -348,6 +396,9 @@ main() {
     # OpenShift extras
     if [ "${PLATFORM}" = "OpenShift" ]; then
         collect_namespace_data "openshift-controller-manager"
+    # Non-OpenShift extras
+    else
+        collect_etcd_metric_service
     fi
     
     # Create an archive tgz file from the directory

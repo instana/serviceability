@@ -106,8 +106,13 @@ instana-k8s-mustgather-VERSION-TIMESTAMP/
 ├── cluster-info_openshift_clusteroperators.txt (OpenShift only)
 ├── agent-config-<namespace>.json
 └── namespaces/
-    └── openshift-controller-manager/ (Openshift only)
-        ├── resources-and-events.txt
+    ├── openshift-controller-manager/ (Openshift only)
+    │   └── resources-and-events.txt
+    ├── kube-system/ (non-Openshift only)
+    │   └── svcs/
+    │       └── <service-name>/
+    │           ├── describe.txt
+    │           └── object-spec.yaml
     └── <namespace>/
         ├── resources-and-events.txt
         └── pods/
@@ -141,6 +146,9 @@ instana-k8s-mustgather-VERSION-TIMESTAMP/
 ### Namespace Resources
 
 - All resources and events in namespaces containing Instana components
+- On OpenShift custers only, from the `openshift-controller-manager` namespace, a list of all the `pods`, `services`, `daemonsets`, `deployments`, `replicasets`, `jobs`, `cronjobs`, `statefulsets` and `events`.
+- On Non-OpenShift custers only, from the `kube-system` namespace, the `yaml` resource definition and the `describe` output of ETCD metric `services`
+  that match the [discovery criteria](https://github.com/instana/instana-agent-operator/blob/4482abf657a1b3b4e64814ce081fe933f52544a8/docs/etcd-metrics.md#vanilla-kubernetes-clusters).
 
 ### Pod Data
 
