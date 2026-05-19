@@ -75,7 +75,7 @@ check_dependencies() {
 setup_output_directory() {
     print_section "Setting up output directory"
     
-    mkdir -p "$OUTPUT_DIR"/{system,logs,config}
+    mkdir -p "$OUTPUT_DIR/system" "$OUTPUT_DIR/logs" "$OUTPUT_DIR/config"
     
     print_success "Created output directory: $OUTPUT_DIR"
 }
@@ -84,7 +84,7 @@ setup_output_directory() {
 collect_system_info() {
     print_section "Collecting system information"
     
-    local sys_dir="$OUTPUT_DIR/system"
+    sys_dir="$OUTPUT_DIR/system"
     
     # Kernel version
     uname -a > "$sys_dir/kernel-version.txt"
@@ -103,11 +103,11 @@ collect_system_info() {
 
 # Prompt for collector directory if default doesn't exist
 get_collector_directory() {
-    local collector_dir="$DEFAULT_COLLECTOR_DIR"
+    collector_dir="$DEFAULT_COLLECTOR_DIR"
     
     if [ ! -d "$DEFAULT_LOGS_PATH" ]; then
         print_error "Default collector logs directory not found: $DEFAULT_LOGS_PATH"
-        echo -n "Please enter the collector installation directory (or press Enter to skip): "
+        printf "Please enter the collector installation directory (or press Enter to skip): "
         read -r user_input
         
         if [ -n "$user_input" ]; then
@@ -130,19 +130,19 @@ get_collector_directory() {
 collect_collector_logs() {
     print_section "Collecting OpenTelemetry Collector logs"
     
-    local collector_dir
+    collector_dir=""
     if ! collector_dir=$(get_collector_directory); then
         return
     fi
     
-    local logs_path="${collector_dir}/logs"
-    local logs_dir="$OUTPUT_DIR/logs"
+    logs_path="${collector_dir}/logs"
+    logs_dir="$OUTPUT_DIR/logs"
     
     if [ -d "$logs_path" ]; then
         cp -r "$logs_path"/* "$logs_dir/" 2>/dev/null || true
         
         # Count collected log files
-        local log_count=$(find "$logs_dir" -type f | wc -l)
+        log_count=$(find "$logs_dir" -type f | wc -l)
         print_success "Collected $log_count log file(s)"
         
         # Create log file inventory
@@ -156,7 +156,7 @@ collect_collector_logs() {
 collect_collector_config() {
     print_section "Collecting OpenTelemetry Collector configuration"
     
-    local config_dir="$OUTPUT_DIR/config"
+    config_dir="$OUTPUT_DIR/config"
     
     if [ -f "$DEFAULT_CONFIG_PATH" ]; then
         cp "$DEFAULT_CONFIG_PATH" "$config_dir/config.yaml"
@@ -164,7 +164,7 @@ collect_collector_config() {
         print_success "Collected config.yaml and config.env from $config_dir"
     else
         print_error "Configuration file not found: $DEFAULT_CONFIG_PATH"
-        echo -n "Please enter the directory path containing config.yaml (or press Enter to skip)"
+        printf "Please enter the directory path containing config.yaml (or press Enter to skip): "
         read -r enter_path
         
         if [ -n "$enter_path" ] && [ -f "$enter_path" ]; then
@@ -181,7 +181,7 @@ collect_collector_config() {
 create_summary() {
     print_section "Creating summary report"
     
-    local summary_file="$OUTPUT_DIR/SUMMARY.txt"
+    summary_file="$OUTPUT_DIR/SUMMARY.txt"
     
     cat > "$summary_file" << EOF
 OpenTelemetry Collector Must-Gather Report
@@ -214,18 +214,23 @@ EOF
 create_archive() {
     print_section "Creating archive"
     
-    local archive_name="${OUTPUT_DIR}.tar.gz"
+    archive_name="${OUTPUT_DIR}.tar.gz"
     
-    tar -czf "$archive_name" "$OUTPUT_DIR" 2>/dev/null
+    # Capture tar errors
+    tar_error=$(tar -czf "$archive_name" "$OUTPUT_DIR" 2>&1)
+    tar_exit_code=$?
     
-    if [ -f "$archive_name" ]; then
-        local size=$(du -h "$archive_name" | cut -f1)
+    if [ $tar_exit_code -eq 0 ]; then
+        size=$(du -h "$archive_name" | cut -f1)
         print_success "Archive created: $archive_name (Size: $size)"
         
         echo ""
         print_info "To extract: tar -xzf $archive_name"
     else
-        print_error "Failed to create archive"
+        print_error "Failed to create archive (exit code: $tar_exit_code)"
+        if [ -n "$tar_error" ]; then
+            echo "tar error output: $tar_error" >&2
+        fi
     fi
 }
 

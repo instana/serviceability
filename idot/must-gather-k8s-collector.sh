@@ -82,7 +82,7 @@ check_dependencies() {
 setup_output_directory() {
     print_section "Setting up output directory"
     
-    mkdir -p "$OUTPUT_DIR"/{pods,configmaps,logs}
+    mkdir -p "$OUTPUT_DIR/pods" "$OUTPUT_DIR/configmaps" "$OUTPUT_DIR/logs"
     
     print_success "Created output directory: $OUTPUT_DIR"
 }
@@ -91,10 +91,10 @@ setup_output_directory() {
 collect_pod_info() {
     print_section "Collecting pod information"
     
-    local pods_dir="$OUTPUT_DIR/pods"
+    pods_dir="$OUTPUT_DIR/pods"
     
     # Get pods with label selector for OTel Collector
-    local label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
+    label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
     
     # List pods - capture both stdout and stderr
     if ! kubectl get pods -n "$NAMESPACE" -l "$label_selector" -o wide > "$pods_dir/pods-list.txt" 2>&1; then
@@ -104,13 +104,13 @@ collect_pod_info() {
     fi
     
     # Count pods - check for kubectl errors
-    local pod_count_output
+    pod_count_output=""
     if ! pod_count_output=$(kubectl get pods -n "$NAMESPACE" -l "$label_selector" --no-headers 2>&1); then
         print_error "Failed to query pods: $pod_count_output"
         return 1
     fi
     
-    local pod_count=$(echo "$pod_count_output" | wc -l | tr -d ' ')
+    pod_count=$(printf '%s\n' "$pod_count_output" | wc -l | tr -d ' ')
     
     # Check if we actually got any pods (empty output means 0 pods)
     if [ -z "$pod_count_output" ] || [ "$pod_count" -eq 0 ]; then
@@ -141,11 +141,11 @@ collect_pod_info() {
 collect_pod_logs() {
     print_section "Collecting pod logs"
     
-    local logs_dir="$OUTPUT_DIR/logs"
-    local label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
+    logs_dir="$OUTPUT_DIR/logs"
+    label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
     
     # Get all pods - check for kubectl errors
-    local pods
+    pods=""
     if ! pods=$(kubectl get pods -n "$NAMESPACE" -l "$label_selector" -o jsonpath='{.items[*].metadata.name}' 2>&1); then
         print_error "Failed to query pods for log collection: $pods"
         return 1
@@ -160,7 +160,7 @@ collect_pod_logs() {
         print_info "Collecting logs from pod: $pod"
         
         # Get container names
-        local containers=$(kubectl get pod "$pod" -n "$NAMESPACE" -o jsonpath='{.spec.containers[*].name}' 2>/dev/null)
+        containers=$(kubectl get pod "$pod" -n "$NAMESPACE" -o jsonpath='{.spec.containers[*].name}' 2>/dev/null)
         
         for container in $containers; do
             # Current logs
@@ -180,8 +180,8 @@ collect_pod_logs() {
 collect_configmap_info() {
     print_section "Collecting ConfigMap information"
     
-    local cm_dir="$OUTPUT_DIR/configmaps"
-    local label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
+    cm_dir="$OUTPUT_DIR/configmaps"
+    label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
     
     # List ConfigMaps
     if ! kubectl get configmaps -n "$NAMESPACE" -l "$label_selector" > "$cm_dir/configmaps-list.txt" 2>&1; then
@@ -197,7 +197,7 @@ collect_configmap_info() {
     print_success "Collected ConfigMaps"
     
     # Extract config.yaml from ConfigMap
-    local configmaps
+    configmaps=""
     if ! configmaps=$(kubectl get configmaps -n "$NAMESPACE" -l "$label_selector" -o jsonpath='{.items[*].metadata.name}' 2>&1); then
         print_error "Failed to query ConfigMaps: $configmaps"
         return 1
@@ -224,7 +224,7 @@ collect_configmap_info() {
 create_summary() {
     print_section "Creating summary report"
     
-    local summary_file="$OUTPUT_DIR/SUMMARY.txt"
+    summary_file="$OUTPUT_DIR/SUMMARY.txt"
     
     cat > "$summary_file" << EOF
 Kubernetes OpenTelemetry Collector Must-Gather Report
@@ -248,13 +248,14 @@ Pod Summary:
 -----------
 EOF
 
-    local label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
-    kubectl get pods -n "$NAMESPACE" -l "$label_selector" --no-headers 2>/dev/null >> "$summary_file" || echo "No pods found" >> "$summary_file"
-    
-    echo "" >> "$summary_file"
-    echo "Service Summary:" >> "$summary_file"
-    echo "---------------" >> "$summary_file"
-    kubectl get services -n "$NAMESPACE" -l "$label_selector" --no-headers 2>/dev/null >> "$summary_file" || echo "No services found" >> "$summary_file"
+    label_selector="app.kubernetes.io/instance=${RELEASE_NAME}"
+    {
+        kubectl get pods -n "$NAMESPACE" -l "$label_selector" --no-headers 2>/dev/null || echo "No pods found"
+        echo ""
+        echo "Service Summary:"
+        echo "---------------"
+        kubectl get services -n "$NAMESPACE" -l "$label_selector" --no-headers 2>/dev/null || echo "No services found"
+    } >> "$summary_file"
     
     print_success "Summary report created"
 }
@@ -263,18 +264,23 @@ EOF
 create_archive() {
     print_section "Creating archive"
     
-    local archive_name="${OUTPUT_DIR}.tar.gz"
+    archive_name="${OUTPUT_DIR}.tar.gz"
     
-    tar -czf "$archive_name" "$OUTPUT_DIR" 2>/dev/null
+    # Capture tar errors
+    tar_error=$(tar -czf "$archive_name" "$OUTPUT_DIR" 2>&1)
+    tar_exit_code=$?
     
-    if [ -f "$archive_name" ]; then
-        local size=$(du -h "$archive_name" | cut -f1)
+    if [ $tar_exit_code -eq 0 ]; then
+        size=$(du -h "$archive_name" | cut -f1)
         print_success "Archive created: $archive_name (Size: $size)"
         
         echo ""
         print_info "To extract: tar -xzf $archive_name"
     else
-        print_error "Failed to create archive"
+        print_error "Failed to create archive (exit code: $tar_exit_code)"
+        if [ -n "$tar_error" ]; then
+            echo "tar error output: $tar_error" >&2
+        fi
     fi
 }
 
