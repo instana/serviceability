@@ -8,8 +8,7 @@ set -e
 
 # Default paths
 DEFAULT_COLLECTOR_DIR="/opt/instana/collector"
-DEFAULT_CONFIG_PATH="${DEFAULT_COLLECTOR_DIR}/config/config.yaml"
-DEFAULT_CFGENV_PATH="${DEFAULT_COLLECTOR_DIR}/config/config.env"
+DEFAULT_CONFIG_PATH="${DEFAULT_COLLECTOR_DIR}/config"
 DEFAULT_LOGS_PATH="${DEFAULT_COLLECTOR_DIR}/logs"
 
 # Output directory setup
@@ -158,18 +157,18 @@ collect_collector_config() {
     
     config_dir="$OUTPUT_DIR/config"
     
-    if [ -f "$DEFAULT_CONFIG_PATH" ]; then
-        cp "$DEFAULT_CONFIG_PATH" "$config_dir/config.yaml"
-        cp "$DEFAULT_CFGENV_PATH" "$config_dir/config.env"
+    if [ -d "$DEFAULT_CONFIG_PATH" ]; then
+        cp "$DEFAULT_CONFIG_PATH"/*.env  "$config_dir/" > /dev/null 2>&1
+        cp "$DEFAULT_CONFIG_PATH"/*.yaml "$config_dir/" > /dev/null 2>&1
         print_success "Collected config.yaml and config.env from $config_dir"
     else
-        print_error "Configuration file not found: $DEFAULT_CONFIG_PATH"
+        print_error "Configuration directory not found: $DEFAULT_CONFIG_PATH"
         printf "Please enter the directory path containing config.yaml (or press Enter to skip): "
         read -r enter_path
         
-        if [ -n "$enter_path" ] && [ -f "$enter_path" ]; then
-            cp "$enter_path/config.yaml" "$config_dir/config.yaml"
-            cp "$enter_path/config.env" "$config_dir/config.env"
+        if [ -n "$enter_path" ] && [ -d "$enter_path" ]; then
+            cp "$enter_path/"*.env  "$config_dir/" > /dev/null 2>&1
+            cp "$enter_path/"*.yaml "$config_dir/" > /dev/null 2>&1
             print_success "Collected config.yaml and config.env from $enter_path"
         else
             print_info "Skipping configuration collection"
