@@ -244,6 +244,13 @@ collect_cr_info() {
     
     cr_dir="$OUTPUT_DIR/otelcr"
     
+    # Check if OpentelemetryCollector CRD exists
+    if ! kubectl get crd opentelemetrycollectors.opentelemetry.io > /dev/null 2>&1; then
+        print_error "OpenTelemetryCollector CRD not found in the cluster"
+        print_info "The OpenTelemetry Operator may not be installed"
+        return 0 # ingore the error if no CRD exists
+    fi
+    
     # List OpentelemetryCollector
     kubectl get opentelemetrycollector -n "$NAMESPACE" > "$cr_dir/opentelemetrycollector-list.txt" 2>&1
     # Get OpentelemetryCollector YAML
