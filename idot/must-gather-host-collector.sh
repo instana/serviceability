@@ -2,18 +2,48 @@
 
 # OpenTelemetry Collector Must-Gather Script
 # Collects system information, configuration and logs
-# Usage: ./must-gather-host-collector.sh [output_directory]
+# Usage: ./must-gather-host-collector.sh [collector_install_path]
 
 set -e
 
-# Default paths
-DEFAULT_COLLECTOR_DIR="/opt/instana/collector"
-DEFAULT_CONFIG_PATH="${DEFAULT_COLLECTOR_DIR}/config"
-DEFAULT_LOGS_PATH="${DEFAULT_COLLECTOR_DIR}/logs"
+# Initialize variables
+OTELCOL_INSTALL_PATH="/opt/instana/collector"
+
+# Parse arguments
+if [ $# -gt 0 ]; then
+    OTELCOL_INSTALL_PATH="$1"
+    if [ ! -d "$OTELCOL_INSTALL_PATH" ]; then
+        echo "Error: The path $OTELCOL_INSTALL_PATH does not exist"
+        echo ""
+        echo "Usage: $0 [collector_install_path]"
+        echo "Example: $0 /custom/path/to/collector"
+        echo ""
+        exit 1
+    fi
+else
+    # Check if default collector directory exists
+    if [ ! -d "$OTELCOL_INSTALL_PATH" ]; then
+        echo "================================================"
+        echo "  OpenTelemetry Collector Must-Gather Tool"
+        echo "================================================"
+        echo ""
+        echo "[ERROR] Default path $OTELCOL_INSTALL_PATH does not exist"
+        echo "[ERROR] Please provide the collector installation path as parameter"
+        echo ""
+        echo "Usage: $0 [collector_install_path]"
+        echo "Example: $0 /custom/path/to/collector"
+        echo ""
+        exit 1
+    fi
+fi
+
+# Set derived paths
+OTELCOL_CONFIG_PATH="${OTELCOL_INSTALL_PATH}/config"
+OTELCOL_LOGS_PATH="${OTELCOL_INSTALL_PATH}/logs"
 
 # Output directory setup
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUTPUT_DIR="${1:-host-otel-must-gather-${TIMESTAMP}}"
+OUTPUT_DIR="host-otel-must-gather-${TIMESTAMP}"
 
 # Banner
 print_banner() {
@@ -102,10 +132,10 @@ collect_system_info() {
 
 # Prompt for collector directory if default doesn't exist
 get_collector_directory() {
-    collector_dir="$DEFAULT_COLLECTOR_DIR"
+    collector_dir="$OTELCOL_INSTALL_PATH"
     
-    if [ ! -d "$DEFAULT_LOGS_PATH" ]; then
-        print_error "Default collector logs directory not found: $DEFAULT_LOGS_PATH"
+    if [ ! -d "$OTELCOL_LOGS_PATH" ]; then
+        print_error "Default collector logs directory not found: $OTELCOL_LOGS_PATH"
         printf "Please enter the collector installation directory (or press Enter to skip): "
         read -r user_input
         
@@ -157,12 +187,12 @@ collect_collector_config() {
     
     config_dir="$OUTPUT_DIR/config"
     
-    if [ -d "$DEFAULT_CONFIG_PATH" ]; then
-        cp "$DEFAULT_CONFIG_PATH"/*.env  "$config_dir/" > /dev/null 2>&1
-        cp "$DEFAULT_CONFIG_PATH"/*.yaml "$config_dir/" > /dev/null 2>&1
+    if [ -d "$OTELCOL_CONFIG_PATH" ]; then
+        cp "$OTELCOL_CONFIG_PATH"/*.env  "$config_dir/" > /dev/null 2>&1
+        cp "$OTELCOL_CONFIG_PATH"/*.yaml "$config_dir/" > /dev/null 2>&1
         print_success "Collected config.yaml and config.env from $config_dir"
     else
-        print_error "Configuration directory not found: $DEFAULT_CONFIG_PATH"
+        print_error "Configuration directory not found: $OTELCOL_CONFIG_PATH"
         printf "Please enter the directory path containing config.yaml (or press Enter to skip): "
         read -r enter_path
         

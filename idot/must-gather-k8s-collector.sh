@@ -2,17 +2,42 @@
 
 # Kubernetes OpenTelemetry Collector Must-Gather Script
 # Collects diagnostic information from OTel Collector deployed via Helm
-# Usage: ./must-gather-k8s-collector.sh [namespace] [release-name]
+# Usage: ./must-gather-k8s-collector.sh [-n namespace] [release-name]
+#        ./must-gather-k8s-collector.sh [release-name] [-n namespace]
 
 set -e
 
 # Default values
-DEFAULT_NAMESPACE="default"
-DEFAULT_RELEASE_NAME="opentelemetry-collector"
+DEFAULT_NAMESPACE="instana-otel-collector"
+DEFAULT_RELEASE_NAME="instana-otel-collector"
+
+# Initialize variables
+NAMESPACE="$DEFAULT_NAMESPACE"
+RELEASE_NAME="$DEFAULT_RELEASE_NAME"
 
 # Parse arguments
-NAMESPACE="${1:-$DEFAULT_NAMESPACE}"
-RELEASE_NAME="${2:-$DEFAULT_RELEASE_NAME}"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -n)
+            if [ -n "$2" ] && [ "${2#-}" = "$2" ]; then
+                NAMESPACE="$2"
+                shift 2
+            else
+                echo "Error: -n requires a namespace argument"
+                exit 1
+            fi
+            ;;
+        -*)
+            echo "Error: Unknown option $1"
+            exit 1
+            ;;
+        *)
+            # Positional argument - treat as release name
+            RELEASE_NAME="$1"
+            shift
+            ;;
+    esac
+done
 
 # Output directory setup
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -315,4 +340,4 @@ main() {
 }
 
 # Run main function
-main
+main "$@"
