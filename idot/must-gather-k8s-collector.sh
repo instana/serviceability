@@ -112,12 +112,8 @@ setup_output_directory() {
     print_success "Created output directory: $OUTPUT_DIR"
 }
 
-# Collect pod information
-collect_pod_info() {
-    print_section "Collecting pod information"
-    
-    pods_dir="$OUTPUT_DIR/pods"
-    
+# Get all pods matching label selectors
+get_all_pods() {
     # Collect pods matching any of the label selectors
     all_pods=""
     for label_selector in "app.kubernetes.io/instance=${RELEASE_NAME}" "app.kubernetes.io/name=opentelemetry-operator" "app.kubernetes.io/managed-by=opentelemetry-operator"
@@ -137,11 +133,21 @@ collect_pod_info() {
     # Remove duplicates and sort
     all_pods=$(printf '%s\n' "$all_pods" | sort -u | tr '\n' ' ')
     
+    echo "$all_pods"
+}
+
+# Collect pod information
+collect_pod_info() {
+    all_pods="$1"
+    
+    print_section "Collecting pod information"
+    
     if [ -z "$all_pods" ]; then
-        print_error "No pods found matching any of the label selectors"
-        print_info "Verify the namespace ($NAMESPACE) and release name ($RELEASE_NAME) are correct"
-        return 1
+        print_info "No pods found, skipping pod information collection"
+        return 0
     fi
+    
+    pods_dir="$OUTPUT_DIR/pods"
     
     pod_count=$(printf '%s\n' "$all_pods" | wc -w | tr -d ' ')
     print_success "Found $pod_count unique pod(s)"
@@ -176,35 +182,16 @@ collect_pod_info() {
 
 # Collect pod logs
 collect_pod_logs() {
+    all_pods="$1"
+    
     print_section "Collecting pod logs"
     
-    logs_dir="$OUTPUT_DIR/logs"
-    
-    # Collect pods matching any of the label selectors
-    all_pods=""
-    for label_selector in "app.kubernetes.io/instance=${RELEASE_NAME}" "app.kubernetes.io/name=opentelemetry-operator" "app.kubernetes.io/managed-by=opentelemetry-operator"
-    do
-        pods=""
-        if pods=$(kubectl get pods -n "$NAMESPACE" -l "$label_selector" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); then
-            if [ -n "$pods" ]; then
-                if [ -z "$all_pods" ]; then
-                    all_pods="$pods"
-                else
-                    all_pods="$all_pods $pods"
-                fi
-            fi
-        fi
-    done
-    
-    # Remove duplicates and sort
-    all_pods=$(printf '%s\n' "$all_pods" | sort -u | tr '\n' ' ')
-    
     if [ -z "$all_pods" ]; then
-        print_error "No pods found matching any of the label selectors"
-        return 1
+        print_info "No pods found, skipping pod logs collection"
+        return 0
     fi
     
-    print_info "Found $(printf '%s\n' "$all_pods" | wc -w | tr -d ' ') unique pod(s)"
+    logs_dir="$OUTPUT_DIR/logs"
     
     for pod in $all_pods; do
         print_info "Collecting logs from pod: $pod"
@@ -325,9 +312,12 @@ main() {
     # Setup
     setup_output_directory
     
+    # Get all pods once
+    all_pods=$(get_all_pods)
+  
     # Collect information
-    collect_pod_info
-    collect_pod_logs
+    collect_pod_info "$all_pods"
+    collect_pod_logs "$all_pods"
     collect_configmap_info
     collect_cr_info
     
