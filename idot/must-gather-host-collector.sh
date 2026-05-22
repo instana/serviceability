@@ -127,41 +127,11 @@ collect_system_info() {
     print_success "Collected disk space information"
 }
 
-# Prompt for collector directory if default doesn't exist
-get_collector_directory() {
-    collector_dir="$OTELCOL_INSTALL_PATH"
-    
-    if [ ! -d "$OTELCOL_LOGS_PATH" ]; then
-        print_error "Default collector logs directory not found: $OTELCOL_LOGS_PATH"
-        printf "Please enter the collector installation directory (or press Enter to skip): "
-        read -r user_input
-        
-        if [ -n "$user_input" ]; then
-            collector_dir="$user_input"
-            if [ ! -d "$collector_dir" ]; then
-                print_error "Directory does not exist: $collector_dir"
-                return 1
-            fi
-        else
-            print_info "Skipping log collection"
-            return 1
-        fi
-    fi
-    
-    echo "$collector_dir"
-    return 0
-}
-
 # Collect OpenTelemetry Collector logs
 collect_collector_logs() {
     print_section "Collecting OpenTelemetry Collector logs"
     
-    collector_dir=""
-    if ! collector_dir=$(get_collector_directory); then
-        return
-    fi
-    
-    logs_path="${collector_dir}/logs"
+    logs_path="$OTELCOL_LOGS_PATH"
     logs_dir="$OUTPUT_DIR/logs"
     
     if [ -d "$logs_path" ]; then
