@@ -89,11 +89,6 @@ check_dependencies() {
         fi
     done
     
-    # Check for helm (optional but recommended)
-    if ! command -v helm > /dev/null 2>&1; then
-        print_info "helm not found - some features may be limited"
-    fi
-    
     if [ -n "$missing_tools" ]; then
         print_error "Missing required tools: $missing_tools"
         echo "Please install the missing tools and try again."
