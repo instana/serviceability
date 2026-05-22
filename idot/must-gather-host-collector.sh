@@ -7,34 +7,31 @@
 set -e
 
 # Initialize variables
-OTELCOL_INSTALL_PATH="/opt/instana/collector"
+DEFAULT_OTELCOL_INSTALL_PATH="/opt/instana/collector"
+OTELCOL_INSTALL_PATH="$DEFAULT_OTELCOL_INSTALL_PATH"
 
 # Parse arguments
 if [ $# -gt 0 ]; then
     OTELCOL_INSTALL_PATH="$1"
-    if [ ! -d "$OTELCOL_INSTALL_PATH" ]; then
+fi    
+
+# Check if default collector directory exists
+if [ ! -d "$OTELCOL_INSTALL_PATH" ]; then
+    echo "================================================"
+    echo "  OpenTelemetry Collector Must-Gather Tool"
+    echo "================================================"
+    echo ""
+    if [ "$OTELCOL_INSTALL_PATH" != "$DEFAULT_OTELCOL_INSTALL_PATH" ]; then
         echo "Error: The path $OTELCOL_INSTALL_PATH does not exist"
-        echo ""
-        echo "Usage: $0 [collector_install_path]"
-        echo "Example: $0 /custom/path/to/collector"
-        echo ""
-        exit 1
-    fi
-else
-    # Check if default collector directory exists
-    if [ ! -d "$OTELCOL_INSTALL_PATH" ]; then
-        echo "================================================"
-        echo "  OpenTelemetry Collector Must-Gather Tool"
-        echo "================================================"
-        echo ""
+    else
         echo "[ERROR] Default path $OTELCOL_INSTALL_PATH does not exist"
         echo "[ERROR] Please provide the collector installation path as parameter"
-        echo ""
-        echo "Usage: $0 [collector_install_path]"
-        echo "Example: $0 /custom/path/to/collector"
-        echo ""
-        exit 1
     fi
+    echo ""
+    echo "Usage: $0 [collector_install_path]"
+    echo "Example: $0 /custom/path/to/collector"
+    echo ""
+    exit 1
 fi
 
 # Set derived paths
