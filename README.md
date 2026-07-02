@@ -4,8 +4,11 @@ This repository contains various scripts and tools designed to assist with **Ins
 
 ## Structure
 
-- **agent/k8s/**  
+- **agent/k8s/**
   Contains Kubernetes/OpenShift–specific scripts (e.g., `instana-k8s-mustgather.sh`) that help gather diagnostic information for Instana Host Agents.
+
+- **autotrace-mutating-webhook/**
+  Contains serviceability scripts for the Instana autotrace mutating webhook, including a script to manually remove instrumentation that was injected by older webhook versions into higher-level workload resources (Deployment, DeploymentConfig, DaemonSet, ReplicaSet, StatefulSet).
 
 As we grow, more directories will be added for different Instana components and environments (including self-hosted Instana) to further enhance serviceability.
 
