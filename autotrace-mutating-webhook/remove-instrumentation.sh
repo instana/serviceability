@@ -3,15 +3,17 @@
 # Removes Instana instrumentation injected by the autotrace mutating webhook
 # from Deployment, DeploymentConfig, DaemonSet, ReplicaSet and StatefulSet objects.
 #
-# Use --cli oc  for OpenShift clusters (supports DeploymentConfig, default)
-# Use --cli kubectl for plain Kubernetes clusters
+# By default the script auto-detects the CLI: it tries 'oc' first and falls
+# back to 'kubectl' when 'oc' is not found.
+# Use --cli oc       to force OpenShift CLI (supports DeploymentConfig)
+# Use --cli kubectl  to force plain Kubernetes CLI
 set -e
 
 DRY_RUN=false
 NAMESPACE=""
 WORKLOAD_NAME=""
 RESOURCE_TYPE="all"  # deployment|deploymentconfig|daemonset|replicaset|statefulset|all
-CLI="oc"             # oc | kubectl
+CLI=""               # auto-detected unless --cli is passed
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -46,15 +48,28 @@ if [ -z "$NAMESPACE" ]; then
     echo "  --dry-run                 Show what would be removed without making changes"
     echo "  --resource TYPE           One of: deployment, deploymentconfig, daemonset,"
     echo "                            replicaset, statefulset, all (default: all)"
-    echo "  --cli oc|kubectl          CLI binary to use (default: oc)"
+    echo "  --cli oc|kubectl          CLI binary to use (auto-detected: oc if present, else kubectl)"
     echo ""
     echo "Examples:"
     echo "  $0 test-apps                                   # All resource types in namespace"
     echo "  $0 test-apps my-app                            # Specific workload (all types)"
     echo "  $0 --resource daemonset test-apps              # Only DaemonSets"
-    echo "  $0 --cli kubectl test-apps                     # Use kubectl instead of oc"
+    echo "  $0 --cli kubectl test-apps                     # Force kubectl"
     echo "  $0 --dry-run test-apps                         # Preview without applying"
     exit 1
+fi
+
+# Auto-detect CLI if not explicitly set
+if [ -z "$CLI" ]; then
+    if command -v oc &>/dev/null; then
+        CLI="oc"
+    elif command -v kubectl &>/dev/null; then
+        CLI="kubectl"
+    else
+        echo "ERROR: neither 'oc' nor 'kubectl' found in PATH"
+        exit 1
+    fi
+    echo "Using CLI: $CLI (auto-detected)"
 fi
 
 if [[ "$CLI" != "oc" && "$CLI" != "kubectl" ]]; then

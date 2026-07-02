@@ -31,7 +31,7 @@ sudo apt-get install jq  # Debian/Ubuntu
 sudo yum install jq      # RHEL/CentOS
 ```
 
-Verify the CLI you intend to use:
+The script auto-detects the CLI: it tries `oc` first and falls back to `kubectl` when `oc` is not available. Confirm at least one is present:
 
 ```bash
 oc whoami                 # OpenShift
@@ -51,30 +51,30 @@ kubectl version --client  # Kubernetes
 |---|---|
 | `--dry-run` | Show what would be removed; no changes made |
 | `--resource TYPE` | One of: `deployment`, `deploymentconfig`, `daemonset`, `replicaset`, `statefulset`, `all` (default: `all`) |
-| `--cli oc\|kubectl` | CLI binary to use (default: `oc`) |
+| `--cli oc\|kubectl` | CLI binary to use (auto-detected: `oc` if present, otherwise `kubectl`) |
 
 > **Note:** `deploymentconfig` is an OpenShift-only resource type and requires `--cli oc`.
 
 ### Examples
 
 ```bash
-# OpenShift — all resource types in a namespace (Deployment, DeploymentConfig, DaemonSet, ReplicaSet, StatefulSet)
+# Auto-detected CLI — all resource types in a namespace
 ./remove-instrumentation.sh test-apps
 
-# OpenShift — dry run first (recommended)
+# Dry run first (recommended)
 ./remove-instrumentation.sh --dry-run test-apps
 
-# OpenShift — specific workload
+# Specific workload
 ./remove-instrumentation.sh test-apps my-app
 
-# OpenShift — only DeploymentConfigs
+# Only DeploymentConfigs (OpenShift)
 ./remove-instrumentation.sh --resource deploymentconfig test-apps
 
-# Kubernetes (plain) — all resource types
+# Force kubectl (plain Kubernetes)
 ./remove-instrumentation.sh --cli kubectl test-apps
 
-# Kubernetes — specific DaemonSet
-./remove-instrumentation.sh --cli kubectl --resource daemonset test-apps my-daemonset
+# Force oc (OpenShift) — specific DaemonSet
+./remove-instrumentation.sh --cli oc --resource daemonset test-apps my-daemonset
 ```
 
 ### What Gets Removed
@@ -214,7 +214,11 @@ The script looks for workloads with the label `instana-autotrace-applied=true`. 
 
 #### "DeploymentConfig is an OpenShift resource and requires --cli oc"
 
-You passed `--resource deploymentconfig` together with `--cli kubectl`. Use `--cli oc` or omit `--cli` (it defaults to `oc`).
+You passed `--resource deploymentconfig` together with `--cli kubectl`. Use `--cli oc` or omit `--cli` (the script will auto-detect `oc` if it is available).
+
+#### "neither 'oc' nor 'kubectl' found in PATH"
+
+Neither CLI binary is available. Install either `oc` (OpenShift) or `kubectl` (Kubernetes) and ensure it is on your `PATH`.
 
 ---
 
