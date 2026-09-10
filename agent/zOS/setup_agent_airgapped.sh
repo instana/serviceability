@@ -119,6 +119,7 @@ function setup_agent_airgapped() {
         echo 'Enabling codepage Setting'
         chtag -R -tc 819 ${AGENT_DIR_ZOS}/bin
         chtag -R -tc 819 ${AGENT_DIR_ZOS}/etc
+        chtag -t -c UTF-8 ${AGENT_DIR_ZOS}/etc/instana/configuration.yaml
         echo 'Codepage Setting for required folder of Instana-Agent has been enabled'
         set_java_home_and_start_agent
     else
@@ -229,6 +230,7 @@ function set_java_home_and_start_agent(){
       test -f "${AGENT_DIR_ZOS_OLD}/com.instana.agent.main.config.Agent.cfg" && cp "${AGENT_DIR_ZOS_OLD}/com.instana.agent.main.config.Agent.cfg" "${AGENT_DIR_ZOS}/etc/instana"
       test -f "${AGENT_DIR_ZOS_OLD}/com.instana.agent.main.sender.Backend.cfg" && cp "${AGENT_DIR_ZOS_OLD}/com.instana.agent.main.sender.Backend.cfg" "${AGENT_DIR_ZOS}/etc/instana"
       chtag -R -tc 819 ${AGENT_DIR_ZOS}/etc
+      chtag -t -c UTF-8 ${AGENT_DIR_ZOS}/etc/instana/configuration.yaml
       rm -rf ${AGENT_DIR_ZOS_OLD}/
   else
       echo "No configuration files are copied from the previously installed agent"

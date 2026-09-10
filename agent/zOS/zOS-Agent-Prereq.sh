@@ -69,8 +69,8 @@ else
     configure_setup
 fi
 
-# Check and install sed and gzip if missing
-for package in "sed" "gzip" "curl" "bash"; do
+# Check and install the required packages if missing
+for package in "sed" "gzip" "curl" "bash" "which"; do
     if ! check_command "$package"; then
         echo "$package not found, attempting to install..."
         install_package "$package"
