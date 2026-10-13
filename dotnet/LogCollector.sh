@@ -61,13 +61,20 @@ CONTAINER_FLAG=()
 
 # resolve pod name from deployment
 log "Resolving pod name for deployment/$DEPLOYMENT ..."
-POD=$(kubectl get pods -n "$NAMESPACE" \
-        -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' \
-        --field-selector=status.phase=Running \
-        -l "$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" \
-               -o go-template='{{range $k,$v := .spec.selector.matchLabels}}{{$k}}={{$v}},{{end}}' \
-             | sed 's/,$//')" \
-      2>/dev/null | awk '{print $1}') || true
+
+# Step 1: read the deployment's label selector. kubectl errors (not found, RBAC) are shown.
+SELECTOR=$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" \
+             -o go-template='{{range $k,$v := .spec.selector.matchLabels}}{{$k}}={{$v}},{{end}}') \
+  || die "Could not read deployment/$DEPLOYMENT in namespace $NAMESPACE (see kubectl error above)."
+SELECTOR="${SELECTOR%,}"   # drop the trailing comma
+[[ -z "$SELECTOR" ]] && die "deployment/$DEPLOYMENT has no spec.selector.matchLabels."
+
+# Step 2: find a running pod matching that selector.
+PODS=$(kubectl get pods -n "$NAMESPACE" -l "$SELECTOR" \
+         --field-selector=status.phase=Running \
+         -o jsonpath='{.items[*].metadata.name}') \
+  || die "Could not list pods for selector '$SELECTOR' in namespace $NAMESPACE (see kubectl error above)."
+POD="${PODS%% *}"   # first pod name
 
 [[ -z "$POD" ]] && die "No running pod found for deployment/$DEPLOYMENT in namespace $NAMESPACE."
 log "Using pod: $POD"
@@ -83,10 +90,18 @@ echo ""
 # identify the active w3wp.exe PID
 log "Identifying active w3wp.exe PID ..."
 
-PID=$(kubectl exec "$POD" -n "$NAMESPACE" "${CONTAINER_FLAG[@]}" \
+# Only the first w3wp PID is selected: several worker processes would otherwise be
+# returned on separate lines and be concatenated into one invalid number.
+# Get-Process -ErrorAction SilentlyContinue exits 0 with no output when no w3wp is running,
+# so a non-zero exit here means kubectl exec itself failed (RBAC, pod not ready, ...).
+# kubectl's stderr is left visible so the cause is shown.
+if ! PID=$(kubectl exec "$POD" -n "$NAMESPACE" "${CONTAINER_FLAG[@]}" \
         -- powershell -Command \
-        "Get-Process w3wp -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id" \
-      2>/dev/null | tr -d '[:space:]') || true
+        "Get-Process w3wp -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id -First 1" \
+      | tr -d '[:space:]'); then
+  warn "kubectl exec failed while detecting the w3wp.exe PID (see error above)."
+  PID=""
+fi
 
 # Confirm the returned value is a valid number before using it in log filenames
 if [[ -z "$PID" ]] || ! [[ "$PID" =~ ^[0-9]+$ ]]; then
