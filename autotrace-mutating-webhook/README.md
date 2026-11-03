@@ -7,6 +7,7 @@ This directory contains serviceability scripts for the **Instana autotrace mutat
 | File | Description |
 |---|---|
 | [`remove-instrumentation.sh`](./remove-instrumentation.sh) | Removes webhook-injected instrumentation from higher-level workload resources (Deployment, DeploymentConfig, DaemonSet, ReplicaSet, StatefulSet) |
+| [`collect-lii-logs.sh`](./collect-lii-logs.sh) | Collects `libinstana_init` (LII) debug logs from a running instrumented pod without modifying the workload |
 
 ---
 
@@ -219,6 +220,71 @@ You passed `--resource deploymentconfig` together with `--cli kubectl`. Use `--c
 #### "neither 'oc' nor 'kubectl' found in PATH"
 
 Neither CLI binary is available. Install either `oc` (OpenShift) or `kubectl` (Kubernetes) and ensure it is on your `PATH`.
+
+---
+
+## collect-lii-logs.sh
+
+Collects `libinstana_init` (LII) debug logs from a running, webhook-instrumented pod. It does **not** modify the Deployment or pod, does not restart anything, and does not create any Kubernetes object, so it is safe to run in production clusters.
+
+### Why this is needed
+
+LII logs nothing by default. Its logging is enabled with `INSTANA_LII_LOG_LEVEL=debug` and `INSTANA_LII_LOG_STDERR=1`, which would normally require changing the workload and restarting the pod.
+
+### How it works
+
+LII is injected via `LD_PRELOAD`, so every new process started in the container loads it. The script runs a short-lived process (default: `java -version`) inside the existing container with the debug variables set for that process only.
+
+The webhook also sets `INSTANA_LII_INIT=1` in the container, which makes LII skip initialization (and logging). The script unsets it for the one process it starts. Without that, the output is empty.
+
+Equivalent manual command:
+
+```bash
+kubectl exec <pod> -n <namespace> [-c <container>] -- \
+  env -u INSTANA_LII_INIT INSTANA_LII_LOG_LEVEL=debug INSTANA_LII_LOG_STDERR=1 \
+  java -version 2>&1 | tee lii-startup.log
+```
+
+### Prerequisites
+
+- `oc` or `kubectl` (auto-detected, `oc` first), with permission to `get pods` and `exec` into the target pod
+- The target pod carries the label `instana-autotrace-applied=true`
+- `env` and the command to run exist in the container image (not the case for distroless images)
+
+### Usage
+
+```bash
+./collect-lii-logs.sh [--cli oc|kubectl] [--container NAME] [--output FILE] <namespace> <pod> [-- command [args...]]
+```
+
+| Option | Description |
+|---|---|
+| `--cli oc\|kubectl` | CLI binary to use (auto-detected: `oc` if present, otherwise `kubectl`) |
+| `--container NAME` | Container to run in (default: the pod's default container) |
+| `--output FILE` | File for the full output (default: `./lii-<pod>-<timestamp>.log`) |
+| `-- command [args]` | Process to run in the container (default: `java -version`) |
+
+### Examples
+
+```bash
+# Default container, default command
+./collect-lii-logs.sh test-apps my-app-5d8f7c-abcde
+
+# Multi-container pod
+./collect-lii-logs.sh --container app test-apps my-app-5d8f7c-abcde
+
+# Explicit command
+./collect-lii-logs.sh test-apps my-app-5d8f7c-abcde -- java -version
+```
+
+The script prints the LII lines (`[INSTANA] [lii <version>] ...`) and saves the complete output, including the output of the command itself, to the output file.
+
+### Limitations
+
+- **This is a replay, not the original startup log.** The script starts a new process in the running container. Files LII created on first start already exist, so some messages differ. For example, `File /tmp/instana/nginx/watcher_started already exists` and `Java version already detected (read from file)` appear instead of `Created file ...`. To capture the real first-start log, debug logging must be enabled before the pod starts, which requires changing the workload.
+- **Short-lived extra process.** It starts one extra JVM in the target container, which uses some CPU and memory briefly.
+- **Container image requirements.** The script fails with "no LII log lines captured" if `env` or the command is missing from the image, the container is wrong, or `LD_PRELOAD` does not point to `libinstana_init.so`.
+- **Output may contain environment details.** Review the saved log before sharing it.
 
 ---
 
